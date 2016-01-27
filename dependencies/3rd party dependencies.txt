@@ -1,0 +1,14 @@
+
+
+str2doubleq http://www.mathworks.com/matlabcentral/fileexchange/28893-fast-string-to-double-conversion
+	This mex function *should* be a drop-in replacement for the builtin str2doubleq().
+	It provides MASSIVE speed improvements when dealing with large arrays (at least up to MATLAB R2013a).
+	However, it's not always safe to use.
+	It now returns (real + im) in R2013a, and I don't remember that happening in an older release.
+	It also differs by eps() for some conversions.
+	Also, there are a few special-case inconsistencies between str2doubleq and str2double, for example when there is a comma (thousands separator).	See comments at the link above.
+
+rgb http://www.mathworks.com/matlabcentral/fileexchange/24497-rgb-triple-of-color-name--version-2
+	Return rgb color values given color name(s). Very useful for plotting.
+
+	
