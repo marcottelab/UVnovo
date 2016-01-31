@@ -78,7 +78,7 @@ paramsDef.pFields = {
 	};
 
 if ~exist('paramsIn','var'), paramsIn = []; end
-params = init_params(paramsDef, paramsIn);
+params = initParams(paramsDef, paramsIn);
 
 verbosity = params.verbosity;
 pFields = params.pFields;

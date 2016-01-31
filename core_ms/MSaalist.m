@@ -40,7 +40,7 @@ paramsDef = struct( ...
 	'excludeAAs', '' ... <str> exclude each symbol from output
 	);
 
-params = init_params(paramsDef, varargin{:});
+params = initParams(paramsDef, varargin{:});
 
 if isfield(params,'custptm')
 	warning('MSaalist parameter name ''custptm'' is deprecated. Use instead ''ptms''')

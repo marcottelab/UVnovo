@@ -42,7 +42,7 @@ paramsDef = struct(...
 	'printFields', {''},... % specify fields to print for each scan
 	'scanPrecision', 8 ...  % beyond ~8 is artifact of single -> dbl conversion
 	);
-params = init_params(paramsDef, paramsIn);
+params = initParams(paramsDef, paramsIn);
 specials = params.specialFields;
 frmtprecision = sprintf('%d',params.scanPrecision);
 

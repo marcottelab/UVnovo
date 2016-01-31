@@ -16,7 +16,7 @@ paramsDef = struct( ...
 	'massRange', [] ... % mass range to return. NOT IMPLEMENTED!!!
 	);
 if ~exist('paramsIn','var'), paramsIn = []; end
-params = init_params(paramsDef, paramsIn);
+params = initParams(paramsDef, paramsIn);
 
 for i = 1:numel(scans);
 	

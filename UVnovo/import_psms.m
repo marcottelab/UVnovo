@@ -1,7 +1,7 @@
 function psmData = import_psms(fn_psms)
 % IMPORT_PSMS import psms from percolator *.xlsx results. This does a little
-%	processing, filtering, and standardization of the data before returning. The
-%	excel file is in the Proteome Discover export format.
+%	processing, filtering, and standardization of the data before returning.
+%	The excel file is in the Proteome Discover export format.
 %	
 %	FN_PSMS is the path of a single psm file.
 % 
