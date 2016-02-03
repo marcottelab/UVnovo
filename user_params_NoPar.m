@@ -1,13 +1,9 @@
-function params = user_params()
+function params = user_params_NoPar()
 % User defined parameters.
 %	Any specified here replace the values located in ./UVnovo/default_params().
 
-
-%% Data import and setup of training and validation datasets
-
-% Primary parent mass field name.
+params.UVnovo.useParallel = false;
 params.pre.import_spectra.pmass_field = 'pmass_theorNormmass';
-
 
 
 % Amino acids
