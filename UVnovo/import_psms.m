@@ -1,9 +1,10 @@
-function psmData = import_psms(fn_psms)
-% IMPORT_PSMS import psms from percolator *.xlsx results. This does a little
-%	processing, filtering, and standardization of the data before returning.
-%	The excel file is in the Proteome Discover export format.
+function psmData = import_psms(fn_psms, varargin)
+% IMPORT_PSMS import psms from percolator *.xlsx results using load_xlsx_psms.
+%	This does additional processing, filtering, and standardization of the data
+%	before returning. The excel file is in the Proteome Discover export format.
 %	
 %	FN_PSMS is the path of a single psm file.
+%	VARARGIN optional parameters for load_xlsx_psms.
 % 
 % See also LOAD_XLSX_PSMS.
 
@@ -38,7 +39,7 @@ psmParams.pFields = {
 % ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 %	Load the psm data.
-[t_psmData, psmParams.pFields] = load_xlsx_psms(fn_psms, psmParams);
+[t_psmData, psmParams.pFields] = load_xlsx_psms(fn_psms, psmParams, varargin{:});
 t_psmData = t_psmData.sample;
 
 %	Annotate sequences with PTM masses.

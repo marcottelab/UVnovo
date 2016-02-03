@@ -4,7 +4,11 @@ function synth_spec = MSsynthspec(seqIn, AA, ions, prettyprint)
 % can include specific mass anywhere in sequence to be included on either
 %   preceding residue or as independent from a residue
 %   ex: 'PEP[+123.456]TIDE' would put an additional 123.456 on the second P
-%       'PEP[123.456]TIDE' would count 123.456 as an independent mass between PEP and TIDE
+%       'PEP[123.456]TIDE' would count 123.456 as an independent mass between
+%			PEP and TIDE
+% 
+% If AA (structure of amino acid masses) is 'nominal' mass type, this function
+%	converts any mass annotations to nominal integer masses.
 % 
 % @BUG @TODO this breaks on sequences with >1 consecutive mass annotations where
 %	at least one of those is an 'independent' mass.
@@ -32,13 +36,14 @@ if ~exist('prettyprint','var') || isempty(prettyprint)
 	end
 end
 
+
 if isempty(seqIn) || strcmp(seqIn,'x')
     synth_spec = zeros(0,numel(ions));
     return
 end
 
 %%% allow for mass modifiers in sequence input itself
-[massAdditions, mass_starts] = ...
+[massAdditionStrs, mass_starts] = ...
 	regexp(seqIn,'(?<=\[)\+?\-?\d*(\.\d*)?(?=\])','match','start');
 strs = regexp(seqIn,'((?<=^|\])[a-zA-Z]*)','match');
 
@@ -48,7 +53,7 @@ t(regexp(seqIn,'[a-zA-Z]')) = 1;
 t = cumsum(t);
 massAdd_locations = t(mass_starts);
 
-massAddPTMinds = cellfun(@(x)x(1)=='+'||x(1)=='-',massAdditions);
+massAddPTMinds = cellfun(@(x)x(1)=='+'||x(1)=='-', massAdditionStrs);
 if ~isempty(massAdd_locations) && ~massAdd_locations(1) && massAddPTMinds(1)
 	warning('MSsynthspec:seqInBadNtermMass', ...
 		'Nterm seqIn mass defined as a ptm but not attached to any residue')
@@ -62,20 +67,25 @@ n_masses = n_aas + nnz(~massAddPTMinds);
 
 %	vector of added mass at each location
 if ~isempty(massAdd_locations)
-	massAddDoubles = accumarray( massAdd_locations'+1, str2double(massAdditions), [n_aas+1,1]);
+	massAdditions = str2double(massAdditionStrs);
+	if strcmp(AA.masstype, 'nominal')
+		massAdditions = round(massAdditions./CONSTS.unit_g);
+	end
+	massAdds_sitewise = accumarray( massAdd_locations'+1, massAdditions, [n_aas+1,1])';
 else
-	massAddDoubles = zeros([n_aas+1,1]);
+	massAdds_sitewise = zeros(1, n_aas + 1);
 end
 
-massAddMask = false(n_aas+1,1);
+massAddMask = false(1, n_aas + 1);
 massAddMask(massAdd_locations(massAddPTMinds)+1) = true;
 
-aa_masses = zeros(n_aas,1);
+aa_masses = zeros(1,n_aas);
 for i = 1:n_aas
-    aa_masses(i,1) = AA.aamass(AA.aas==sequence(i));
+    aa_masses(i) = AA.aamass(AA.aas==sequence(i));
 end
 
-t = [[0;aa_masses]+massAddDoubles.*massAddMask, massAddDoubles.*(1-massAddMask)]';
+t = [ [0, aa_masses] + massAdds_sitewise.*massAddMask; ...
+	  massAdds_sitewise.*(1-massAddMask) ];
 t(t==0)=[];
 masses = t;
 
@@ -141,6 +151,11 @@ if prettyprint % print table of residues, masses, and cumulative masses
 		end
 	end
 	
+	if strcmp(AA.masstype, 'nominal')
+		pre = regexp(massAdditionStrs,'^[+-]','match','once');
+		massAdditionStrs = strcat(pre, sprintfc('%g',massAdditions));
+	end
+	
 	z = cellstr(sequence');
 	x = cell(n_masses,1);
 	xi = 1;
@@ -153,9 +168,9 @@ if prettyprint % print table of residues, masses, and cumulative masses
 			zi = zi+1;
 		end
 		if massAddPTMinds(r)
-			x{xi-1} = [x{xi-1} '[' massAdditions{r} ']'];
+			x{xi-1} = [x{xi-1} '[' massAdditionStrs{r} ']'];
 		else
-			x{xi} = ['[' massAdditions{r} ']'];
+			x{xi} = ['[' massAdditionStrs{r} ']'];
 			xi = xi+1;
 		end
 	end

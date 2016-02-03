@@ -1,4 +1,4 @@
-function [spepdata, pFields, fnames] = load_xlsx_psms(fn_psm_xlsx, paramsIn)
+function [spepdata, pFields, fnames] = load_xlsx_psms(fn_psm_xlsx, paramsIn, varargin)
 % LOAD_XLSX_PSMS load Thermo Proteome Discoverer PSMs from Excel spreadsheets.
 % 
 % INPUT
@@ -7,7 +7,7 @@ function [spepdata, pFields, fnames] = load_xlsx_psms(fn_psm_xlsx, paramsIn)
 %		contains various information relating to a single PSM. Multiple PSM rows
 %		can correspond with a single spectrum.
 %	paramsIn: <struct> see section below for more parameter documentation.
-%		.pFields: <n x 3 cell> define how to interpret columns in psm files.
+%	varargin: additional name-value parameter pairs.
 % 
 % OUTPUT
 %	spepdata: 
@@ -78,7 +78,7 @@ paramsDef.pFields = {
 	};
 
 if ~exist('paramsIn','var'), paramsIn = []; end
-params = initParams(paramsDef, paramsIn);
+params = initParams(paramsDef, paramsIn, varargin{:});
 
 verbosity = params.verbosity;
 pFields = params.pFields;
@@ -228,7 +228,7 @@ for n = 1:n_files
 	spepdata(n).sample = structpepdata;
 	clear structpepdata seqs ppm
 	
-	printf_msg(2, '\tParsed in %g seconds\n', toc(tic_parse))
+	printf_msg(2, '\t\bParsed in %g seconds\n', toc(tic_parse))
 end
 
 if params.add_ppm_adj
@@ -237,7 +237,7 @@ end
 
 fnames = fpaths; % to be consistent with old version. @.DEP
 
-printf_msg(2,'ALL DONE\n')
+printf_msg(2,'Done loading psm file.\n')
 
 %%%%%%%%%%%%%%%%%%%%
 %%% Helper functions

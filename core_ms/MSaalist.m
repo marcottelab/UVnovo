@@ -42,6 +42,11 @@ paramsDef = struct( ...
 
 params = initParams(paramsDef, varargin{:});
 
+if ~isempty(params.excludeAAs)
+	warning('MSaalist excludeAAs parameter will be deprecated. DO THIS!')
+	params.excludeAAs = '';
+end
+
 if isfield(params,'custptm')
 	warning('MSaalist parameter name ''custptm'' is deprecated. Use instead ''ptms''')
 	params.ptms = params.custptm;

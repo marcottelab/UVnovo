@@ -1,26 +1,30 @@
-function UVnovo_partition(Meta)
+function partitionMeta = UVnovo_partition(Meta)
 % UVNOVO_PARTITION imports, partitions, and saves spectra & psm data.
+% 
+% @TODO add documentation.
 % 
 %	Vars are saved in a serialized matlab format. The is much more efficient in
 %	time and space than standard matlab files, but io.loadSer() is required for
 %	opening such files. See io.saveSer for more info.
 % 
 
+paths = Meta.paths;
+params = Meta.params;
 
 %% Import spectra and psm files.
 
-msData = import_spectra(Meta.paths.spectra.path, Meta.params.pre.import_spectra);
-psmData = import_psms(Meta.paths.psms.path);
+msData = import_spectra(paths.spectra.path, params.pre.import_spectra);
+psmData = import_psms(paths.psms.path, 'verbosity',params.UVnovo.verbosity);
 
 % Partition for cross-validation.
-nPartitions = Meta.params.pre.crossVal.nPartitions;
+nPartitions = params.pre.crossVal.nPartitions;
 partitions = partition_psms(psmData, nPartitions);
 
 % Index between psmData.scans & msData.scans. Assign later to same partitions.
 mapi = cross_index(psmData, msData);
-for i = 1:nPartitions
-	partitions(i).test.msData =  mapi.psmData.msData(partitions(i).test.psmData);
-	partitions(i).train.msData = mapi.psmData.msData(partitions(i).train.psmData);
+for n = 1:nPartitions
+	partitions(n).test.msData =  mapi.psmData.msData(partitions(n).test.psmData);
+	partitions(n).train.msData = mapi.psmData.msData(partitions(n).train.psmData);
 end
 
 % Create and save training and test sets.
@@ -32,9 +36,16 @@ if ~exist('psmData_ORIG','var'), psmData_ORIG = psmData; end
 msData.scans =  [];
 psmData.scans = [];
 
+partitionMeta = struct( ...
+	'nPartitions', nPartitions, ...
+	'parts', struct( 'n', num2cell(1:nPartitions)' ) ...
+	);
 
 for n = 1:nPartitions
-	partitionDir = fullfile(Meta.paths.exp.path, sprintf('part%g', n));
+	
+	% Create directory for each partition. Make it unique if it already exists.
+	t_partitionDir = fullfile(paths.exp.path, sprintf('part%g', n));
+	partitionDir = io.genUniquePath( t_partitionDir );
 	mkdir(partitionDir)
 	
 	% Create and save test partition vars.
@@ -43,19 +54,25 @@ for n = 1:nPartitions
 	Meta.partition.type = 'test';
 	msData.scans = msData_ORIG.scans( partitions(n).test.msData );
 	
-	fn_test = fullfile(partitionDir, sprintf('p%d_Test.mat', n));
+	fn_test = sprintf('p%d_Test.mat', n);
+	fpath_test = fullfile(partitionDir, fn_test);
 	
-	io.saveSer(fn_test, 'msData', 'Meta')
+	io.saveSer(fpath_test, 'msData', 'Meta')
 	
 	% Create and save training partition vars.
 	Meta.partition.type = 'train';
 	msData.scans =  msData_ORIG.scans(  partitions(n).train.msData  );
 	psmData.scans = psmData_ORIG.scans( partitions(n).train.psmData );
 	
-	fn_train = fullfile(partitionDir, sprintf('p%d_Train.mat', n));
-	io.saveSer(fn_train, 'msData', 'Meta')
+	fn_train = sprintf('p%d_Train.mat', n);
+	fpath_train = fullfile(partitionDir, fn_train);
+	io.saveSer(fpath_train, 'msData', 'psmData', 'Meta')
 	
 	Meta = rmfield(Meta, 'partition');
+	
+	partitionMeta.parts(n).dir = partitionDir;
+	partitionMeta.parts(n).test.file =  fn_test;
+	partitionMeta.parts(n).train.file = fn_train;
 end
 
 end %MAIN

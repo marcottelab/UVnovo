@@ -44,6 +44,11 @@ if ~exist('paramsUser','var') || ...
 	return
 end
 
+if isempty(paramsUser)
+	paramsUser = varargin;
+	varargin = {};
+end
+
 if ~(isstruct(paramsUser) || iscell(paramsUser) || ...
 		(ischar(paramsUser) && numel(varargin)) )
 	error('initParams:invalidUserParams', ...
@@ -53,7 +58,9 @@ end
 
 if iscell(paramsUser)
 	% Put user params into a struct.
-	paramsUser = paramsUser';
+	if size(paramsUser,2) == 2
+		paramsUser = paramsUser';
+	end
 	paramsUser = cell2struct(paramsUser(2:2:end), paramsUser(1:2:end), 2);
 end
 
