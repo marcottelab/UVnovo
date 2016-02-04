@@ -68,6 +68,7 @@ m.h2o = CONSTS.mH2O;
 m.co = CONSTS.mCO;
 m.nh = CONSTS.mNH;
 m.oh = CONSTS.mOH;
+% m.unit_g is assigned below.
 
 % @TODO merge this alkylation stuff with the ptm definitions
 alkyls.IAM = CONSTS.mPTM.Carbamidomethyl;
@@ -124,6 +125,8 @@ switch params.masstype
 		error('MSaalist:UnkMassType','Unknown mass type ''%s''',params.masstype)
 end
 
+% Mean Da per nucleon. Used for nominal mass conversions. See CONSTS.
+AAs.m.unit_g = CONSTS.unit_g;
 
 aakeyvals = nan(127,1);
 aakeyvals(' ') = 0;

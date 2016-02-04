@@ -1,12 +1,12 @@
-function seqmass = MSpepmass(sequence, aas, mhPlus, aaOnly)
+function seqmass = MSpepmass(sequences, aas, mhPlus, aaOnly)
 % MSPEPMASS() calculate peptide mass from sequence(s)
 % INPUT ARGS
-%   sequence: <str|cellstr> peptide sequences
+%   sequences: <str|cellstr> peptide sequences
 %       Each can contain additional mass annotations within brackets.
 %       Ex: PE[-45.45]TID[.1]E[+55]
 %   aas: <struct> from MSaalist, struct of masses for peptide mass calculation
 %   mhPlus: true (default) if requesting MH+ mass (addition of a proton)
-%   aaOnly: sequence(s) only contain aas symbols. ~10x faster if true.
+%   aaOnly: sequence(s) only contain aas symbols. A little faster if true.
 %       When true, does not allow masses in brackets (used to signify PTMs).
 %       ex. if sequence == PEPTM[+15.994915]IDE, add mass of the oxidation.
 % OUTPUT
@@ -39,60 +39,72 @@ if mhPlus
 else
     massProtOrNot = 0;           % peptide M mass
 end
+m_const = AAs.m.h2o + massProtOrNot + sum(AAs.ncderiv); % mass added to all seqs
+
+% mass indexed to its aa:
+aa2mass = AAs.intaa2mass;
+
+if ~iscell(sequences)
+	sequences = {sequences};
+end
+seqmass = zeros(size(sequences));
+
+if ~aaOnly
+	% Allow bracketed PTM annotations.
+	[seqParts, bracMasses] = regexp(sequences,'(?<=\[).*?(?=\])', 'split', 'match');
+	
+	if all( cellfun('isempty',bracMasses) )
+		% Then there aren't any (valid) mass annotations. Use simple calc below.
+		aaOnly = true;
+		
+	else
+		aa2mass(double('[]')) = 0;
+		nominalmass = strcmp(AAs.masstype, 'nominal');
+		unit_g = AAs.m.unit_g;
+		
+		for i = 1:numel(sequences)
+			s = sequences{i};
+			if ~isempty(s)
+				t_brackMassStrs = bracMasses{i};
+				
+				if isempty(t_brackMassStrs)
+					t_brackMass = 0;
+					
+				else
+					% This conversion is much faster than builtin str2double().
+					[~,ia] = max(cellfun('length', t_brackMassStrs));
+					t_brackMassStrs{ia}(end+1) = ' ';
+					t_brackMass = sum( sscanf( char(t_brackMassStrs)', '%f'));
+					% SLOWER: t_brackMass = sum(str2double(t_brackMassStrs));
+					
+					if nominalmass
+						t_brackMass = round(t_brackMass./unit_g);
+					end
+				end
+				
+				seqmass(i) = sum(aa2mass(double([seqParts{i}{:}]))) + ...
+					m_const + t_brackMass;
+			end
+		end
+	end
+end
 
 if aaOnly
-    if ~iscell(sequence)
-		if isempty(sequence)
-			seqmass = 0;
-		else
-			seqmass = sum(AAs.intaa2mass(double(sequence))) + AAs.m.h2o + massProtOrNot + sum(AAs.ncderiv);
+	% No bracketed PTM annotations.
+	for i = 1:numel(sequences)
+		s = sequences{i};
+		if ~isempty(s)
+			seqmass(i) = sum(aa2mass(double(s))) + m_const;
 		end
-	else
-		seqmass = zeros(size(sequence));
-		intaa2mass = AAs.intaa2mass;
-		m_const = AAs.m.h2o + massProtOrNot + sum(AAs.ncderiv); % mass added to all seqs
-		for i = 1:numel(sequence)
-			s = sequence{i};
-			if ~isempty(s)
-				seqmass(i) = sum(intaa2mass(double(s))) + m_const;
-			end
-		end
-    end
-else % allow PTM annotations
-	intaa2mass = AAs.intaa2mass;
-	intaa2mass(double('[]')) = 0;
-	m_const = AAs.m.h2o + massProtOrNot + sum(AAs.ncderiv);
-    if ~iscell(sequence)
-		if isempty(sequence)
-			seqmass = 0;
-		else
-			[seqParts, doubMass] = regexp(sequence, ...
-				'(?<=\[).*?(?=\])', 'split', 'match');
-			seq = [seqParts{:}];
-			userdefMass = sum(str2double(doubMass));
-			
-			seqmass = sum(intaa2mass(double(seq))) + m_const + userdefMass;
-		end
-	else
-		seqmass = zeros(size(sequence));
-        for i = 1:numel(sequence)
-			s = sequence{i};
-			if ~isempty(s)
-				[t_seqParts, t_doubMass] = regexp(s, ...
-					'(?<=\[).*?(?=\])', 'split', 'match');
-				t_seq = [t_seqParts{:}];
-				
-				%	This is much faster than builtin str2double().
-				[~,ia] = max(cellfun('length', t_doubMass));
-				t_doubMass{ia}(end+1) = ' ';
-				t_userdefMass = sum( sscanf( char(t_doubMass)', '%f'));
-				% t_userdefMass = sum(str2double(t_doubMass));
-				
-				seqmass(i) = sum(intaa2mass(double(t_seq))) + m_const + t_userdefMass;
-			end
-        end
-    end
+	end
 end
 
 end
+
+%%% Note to self--
+% Matlab will convert chars to numbers when using them to index
+% into and array, but it's a little slower than explicitly
+% converting to double:
+%	aa2mass(double(seq))   % faster
+%	aa2mass(seq)           % slower
 

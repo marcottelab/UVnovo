@@ -1,5 +1,5 @@
-function synth_spec = MSsynthspec(seqIn, AA, ions, prettyprint)
-% SYNTH_SPEC = MSSYNTHSPEC(SEQIN, AA, IONS, PRETTYPRINT)
+function synth_spec = MSsynthspec(seqIn, AAs, ions, prettyprint)
+% SYNTH_SPEC = MSSYNTHSPEC(SEQIN, AAS, IONS, PRETTYPRINT)
 % calculate fragment masses for an amino acid sequence
 % can include specific mass anywhere in sequence to be included on either
 %   preceding residue or as independent from a residue
@@ -7,7 +7,7 @@ function synth_spec = MSsynthspec(seqIn, AA, ions, prettyprint)
 %       'PEP[123.456]TIDE' would count 123.456 as an independent mass between
 %			PEP and TIDE
 % 
-% If AA (structure of amino acid masses) is 'nominal' mass type, this function
+% If AAs (structure of amino acid masses) is 'nominal' mass type, this function
 %	converts any mass annotations to nominal integer masses.
 % 
 % @BUG @TODO this breaks on sequences with >1 consecutive mass annotations where
@@ -24,7 +24,7 @@ function synth_spec = MSsynthspec(seqIn, AA, ions, prettyprint)
 
 %%% Parse input args
 	% amino acids and masses
-if ~exist('AA','var') || isempty(AA), AA = MSaalist; end
+if ~exist('AAs','var') || isempty(AAs), AAs = MSaalist; end
 	% fragment ions to create (upper case for charge 2)
 if ~exist('ions','var') || isempty(ions), ions = 'by'; end
 	% print a nicely formatted table of sequence ion masses
@@ -68,8 +68,8 @@ n_masses = n_aas + nnz(~massAddPTMinds);
 %	vector of added mass at each location
 if ~isempty(massAdd_locations)
 	massAdditions = str2double(massAdditionStrs);
-	if strcmp(AA.masstype, 'nominal')
-		massAdditions = round(massAdditions./CONSTS.unit_g);
+	if strcmp(AAs.masstype, 'nominal')
+		massAdditions = round(massAdditions./AAs.m.unit_g);
 	end
 	massAdds_sitewise = accumarray( massAdd_locations'+1, massAdditions, [n_aas+1,1])';
 else
@@ -81,7 +81,7 @@ massAddMask(massAdd_locations(massAddPTMinds)+1) = true;
 
 aa_masses = zeros(1,n_aas);
 for i = 1:n_aas
-    aa_masses(i) = AA.aamass(AA.aas==sequence(i));
+    aa_masses(i) = AAs.aamass(AAs.aas==sequence(i));
 end
 
 t = [ [0, aa_masses] + massAdds_sitewise.*massAddMask; ...
@@ -93,29 +93,29 @@ masses = t;
 n_term = cumsum(masses(1:end));
 c_term = cumsum(masses(end:-1:1));
 synth_spec = zeros(n_masses, numel(ions));
-for i = 1:numel(ions)   % AA.ncderiv is derivitized [N, C] terminus mass
+for i = 1:numel(ions)   % AAs.ncderiv is derivitized [N, C] terminus mass
     switch ions(i)
         case {'n','N'}    % amino terminal aa chain
 			% peptide N-term mass has an additional Hydrogen, not included here
-            synth_spec(:,i) = n_term + AA.ncderiv(1);
+            synth_spec(:,i) = n_term + AAs.ncderiv(1);
         case {'o','O'}    % carboxy terminal aa chain
 			% peptide C-term mass has an additional OH, not included here
-            synth_spec(:,i) = c_term + AA.ncderiv(2);
+            synth_spec(:,i) = c_term + AAs.ncderiv(2);
         case {'a','A'}    % -27 (+H -CO)
-            synth_spec(:,i) = n_term+AA.m.h-AA.m.co + AA.ncderiv(1);
+            synth_spec(:,i) = n_term + AAs.m.h - AAs.m.co + AAs.ncderiv(1);
         case {'b','B'}    % +1 (+H)
-            synth_spec(:,i) = n_term+AA.m.h + AA.ncderiv(1);
+            synth_spec(:,i) = n_term + AAs.m.h + AAs.ncderiv(1);
         case {'c','C'}    % +18 (+H +NH +H +H)
-            synth_spec(:,i) = n_term+3*AA.m.h+AA.m.nh + AA.ncderiv(1);
+            synth_spec(:,i) = n_term + 3*AAs.m.h + AAs.m.nh + AAs.ncderiv(1);
         case {'x','X'}    % +45 (+OH +CO)
-            synth_spec(:,i) = c_term+AA.m.oh+AA.m.co + AA.ncderiv(2);
+            synth_spec(:,i) = c_term + AAs.m.oh + AAs.m.co + AAs.ncderiv(2);
         case {'y','Y'}    % +19 (+H2O +H)
-            synth_spec(:,i) = c_term+AA.m.h2o+AA.m.h + AA.ncderiv(2);
+            synth_spec(:,i) = c_term + AAs.m.h2o + AAs.m.h + AAs.ncderiv(2);
         case {'z','Z'}    % +2 (+OH -NH)
-            synth_spec(:,i) = c_term+AA.m.oh-AA.m.nh + AA.ncderiv(2);
+            synth_spec(:,i) = c_term + AAs.m.oh - AAs.m.nh + AAs.ncderiv(2);
     end
-    if double(ions(i))<97
-        synth_spec(:,i) = (synth_spec(:,i) + AA.m.prot)/2;
+    if double(ions(i))<97 % charge 2+ ions
+        synth_spec(:,i) = (synth_spec(:,i) + AAs.m.prot)/2;
     end
 end
 
@@ -151,7 +151,7 @@ if prettyprint % print table of residues, masses, and cumulative masses
 		end
 	end
 	
-	if strcmp(AA.masstype, 'nominal')
+	if strcmp(AAs.masstype, 'nominal')
 		pre = regexp(massAdditionStrs,'^[+-]','match','once');
 		massAdditionStrs = strcat(pre, sprintfc('%g',massAdditions));
 	end
