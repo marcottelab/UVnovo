@@ -1,0 +1,108 @@
+% for matlab function fieldnameStandardize.m
+%   populate manually
+%   entry must be single word following '+' or '='
+%   '+' denotes a standard field name for a particular data
+%   '=' denotes an alternate name for the same data. It will be converted to the standard name.
+
+# @TODO deprecate this function or make it HUPO-PSI compliant.
+
+# commented entries: these are (some of) the fields names in an mzXML file
+
+# num
++nscan
+=FirstScan
+
++sequence
+=Sequence
+=seq
+
++XCorr
+
++dScore
+=DeltaScore
+=x0x0394Score
+
++dCn
+=DeltaCn
+=x0x0394Cn
+
++ppm
+=DeltaMass_PPM
+=x0x0394M0x5Bppm0x5D
+
++rank
+=Rank
+
++PTMs
+=Modifications
+
+# precursorMz
++pmz
+=m_z_Da
+=m0x2Fz0x5BDa0x5D
+
++pmass
+=MHplus_Da
+=MH0x2B0x5BDa0x5D
+
+# retentionTime
++rt
+=RT
+=RT_min
+=RT0x5Bmin0x5D
+
++confidence
+=ConfidenceLevel
+
++ambiguity
+=PSMAmbiguity
+
++nProteins
+=n_Proteins
+
++nProtGroup
+=n_ProteinGroups
+
++accession
+=ProteinGroupAccessions
+
++pcharge
+=Charge
+
++SearchEngineRank
+
++qValue
+=q_Value
+=q0x2DValue
+
++PEP
+
++pepsMatched
+=PeptidesMatched
+
++probability
+=Probability
+
++nMissedCleavages
+=x0x23MissedCleavages
+
++lastScan
+=LastScan
+
++spectrumFile
+=SpectrumFile
+
++activation
+=ActivationType
+
++isolationInterference
+=IsolationInterference0x5B0x250x5D
+
++ionInjectTime
+=IonInjectTime0x5Bms0x5D
+
++MS_Order
+=MSOrder
+
++ionsMatched
+=IonsMatched

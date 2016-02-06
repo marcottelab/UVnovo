@@ -280,7 +280,7 @@ function updatepath()
 		'./core_ms'
 		'./core_ms/fileIO'
 		'./UVnovo'
-		'./UVnovo/deprecate'
+		'./UVnovo/to_deprecate'
 		'./UVnovo/models'
 		'./utils'
 		};
