@@ -1,6 +1,6 @@
 function [errorID, status] = exceptionID(mnemonic, stack_location)
 % EXCEPTIONID create an MException identifier string, following format of
-%	UVNovo:component:mnemonic
+%	UVnovo:component:mnemonic
 % where
 %	component: name of function where error is generated
 %	mnemonic: message relating to the particular error cause or location
@@ -10,7 +10,7 @@ function [errorID, status] = exceptionID(mnemonic, stack_location)
 %		which error ID should be generated.
 % Example: from calling function 'foo'...
 %	function foo()
-% 	eid = exceptionID('yo',0); % eid == 'UVNovo:foo:yo'
+% 	eid = exceptionID('yo',0); % eid == 'UVnovo:foo:yo'
 
 if ~exist('stack_location', 'var') || isempty(stack_location)
 	stack_location = 0;
@@ -21,9 +21,9 @@ if ~isempty(s)
 	callingFunc = s.file;
 	component = regexprep(callingFunc, ...
 		{'\.m$', '^(.*?\\(\+|\@)|.*\\)', '\\(\+|\@)?'}, {'', '', ':'});
-	pre = strjoin({'UVNovo',component},':');
+	pre = strjoin({'UVnovo',component},':');
 else
-	pre = 'UVNovo';
+	pre = 'UVnovo';
 end
 
 if exist('mnemonic', 'var') && ~isempty(mnemonic) && ischar(mnemonic)

@@ -93,10 +93,26 @@ switch (nDef>1) + 2*(nUser>1)
 		t_params = repmat(paramsDefault,size(paramsUser));
 		indsUser = 1:nOut;
 	case 3 % both > 1
-		assert(nDef == nUser, 'io:initParams:DefAndUserNumelMismatch', ...
-			'Default and user parameter structs must have == numel when both not scalar.')
-		t_params = paramsDefault;
-		indsUser = 1:nOut;
+		% This block got ugly.
+		if nDef == nUser
+			t_params = paramsDefault;
+			indsUser = 1:nOut;
+		elseif isempty(setdiff(fieldnames(paramsDefault), fieldnames(paramsUser)))
+			% Then we'll go with the user params.
+			t_params(size(paramsUser)) = struct;
+			if nDef > nUser
+				t_params(:) = paramsDefault(1:nUser);
+			else
+				t_params(1:nDef) = paramsDefault;
+			end
+			
+			nOut = nUser;
+			indsUser = 1:nUser;
+		else
+			error('initParams:DefAndUserMismatch', ...
+				['Default and user parameter structs must have == numel or'...
+				' fieldnames when both are not scalar.'])
+		end
 end
 
 p_fields = fieldnames(paramsUser);

@@ -42,15 +42,19 @@ switch exec_mode
 		varargout{1} = Meta;
 		
 	case 'train'
-		train(args)
+		Meta = train(args);
+		varargout{1} = Meta;
 		
 	case 'denovo'
 		denovo(args)
-	
+		
 	case 'benchmark'
 		benchmark(args)
 		
 	otherwise % Run any UVnovo subfunction.
+		if ~strcmp(which(exec_mode), which(mfilename))
+			error('UVnovo:InvalidExecMode','Arg1 must be a UVnovo subfunction.')
+		end
 		fh = str2func(exec_mode);
 		[varargout{1:nargout}] = fh(varargin{:});
 end
@@ -130,8 +134,8 @@ function varargout = train(argsIn)
 		}, {'type', 'path', 'required', 'uigetfile_args'}, 2);
 	Meta.paths = getFiles( filespec );
 	
-% % % Load Meta from training dataset.
-% % s = io.loadSer(Meta.paths.train.path);
+	% % % Load Meta from training dataset.
+	% % s = io.loadSer(Meta.paths.train.path);
 	
 	% Get UVnovo parameters & update with user-provided params.
 	Meta.params = getParams(Meta.paths.params.path);
@@ -158,8 +162,8 @@ function varargout = train(argsIn)
 % 		Meta.train = UVnovo_train(Meta);
 	end
 	
-	varargout = {};
-	fprintf(1,'Done.\n')
+	varargout = {Meta};
+	fprintf(1,'All done.\n')
 end
 
 
@@ -275,7 +279,6 @@ function updatepath()
 		'./'
 		'./core_ms'
 		'./core_ms/fileIO'
-		'./dependencies'
 		'./UVnovo'
 		'./UVnovo/deprecate'
 		'./UVnovo/models'
@@ -283,6 +286,7 @@ function updatepath()
 		};
 	append_paths = fullfile(uvnovo_rootdir, append_relpaths);
 	addpath(append_paths{:})
+	addpath(genpath(fullfile(uvnovo_rootdir,'dependencies')))
 end
 
 function args = parseArgs(varargin)

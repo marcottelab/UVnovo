@@ -45,45 +45,49 @@ params.pre.crossVal.nPartitions = 3; % number of CV partitions
 %% UVnovo training. Construct random forests from spectra & psms.
 % ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ %
 
-% Mass window, around a base peak, from which to draw feature variables.
-params.train.windowRange_Da = [-50 50];
-
-% Seed for repeatable generation of 'random' true-negative training examples.
-% If left empty, UVnovo assigns a random seed, and the training procedure will
-% yield slightly different results each time it is run.
-params.train.falseObservationSeed = 121212;
-
-
 % Ensemble training schedule. Iteratively train & select top predictor vars for
 % each subsequent model.
 % Parameters for each training round:
 %	nvars: Select this many predictor vars. First step must be '0' (all vars).
 %	ntrees: Number of decision trees in the ensemble.
-%	plotOOBError: Calculate & plot out-of-bag error vs. ntrees. It can be slow.
-%	keepEns: Retain & return specified ensemble model(s).
-%	nPrint: Print training progress after every n trees.
 %	minLeaf: Minimum number of observations per tree leaf.
 %	oobVarImp: <'on'|'off'> Out-of-bag estimate of var importance. SLOW!
+%	plotOOBError: Calculate & plot out-of-bag error vs. ntrees. It can be slow.
+% User may add or remove rows from following table as desired.
 params.train.ensemble.iters = cell2struct({
-	0,      150,     1,             0,        4,       1,       'off'; % round 1
-	200,    150,     1,             0,        4,       1,       'off'; % round 2
-	100,    150,     1,             0,        4,       1,       'off'; % round 3
-	60,     250,     1,             0,        4,       1,       'on' ; % round 4
-	30,     400,     1,             1,        4,       1,       'on' ; % final
+	...<nvars>  <ntrees>  <minLeaf>  <oobVarImp>  <plotOOBError>
+		0,       150,      1,        'off',        true;    % round 1
+		200,     150,      1,        'off',        true;    % round 2
+		100,     150,      1,        'off',        true;    % round 3
+		60,      250,      1,        'on',         true;    % round 4
+		30,      400,      1,        'on',         true;    % final round
 	}, ...
-  {'nvars','ntrees','plotOOBError','keepEns','nPrint','minLeaf','oobVarImp'},2);
+	{  'nvars', 'ntrees', 'minLeaf', 'oobVarImp', 'plotOOBError'}, 2);
 
-% General options for Matlab ensemble construction.
-% The random stream for each training iteration is derived from 'StreamSeed'
-% and the training round number.
-params.train.ensemble.statset = struct( 'streamSeed',  123 );
+% Print progress after for every n trees trained.
+params.train.ensemble.nPrint = 4;
 
+% Random stream seed for Matlab's ensemble training procedure.
+params.train.ensemble.rstreamSeed = 123;
 
-
-%% 
+%% Random Forest predictor (feature) variables.
 % ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ %
 
+% Parameters controlling how ms2 peaks are normalized and converted to features:
+% ms2 fragment ion mass accuracy [m/z]. Peaks within this range are binned.
+params.predVecs.mzThreshold = [-.5, .5];
+% Window [m/z] for local peak intensity normalization.
+params.predVecs.localPeakWin = [-50, 50];
 
+% Mass window [Da] defines which peaks, around each nominal frag site, are
+% considered as features. This is only for the first training round, before the
+% important predictors are identified.
+params.predVecs.featuresMassWin = [-50 50];
+
+% Random stream seed value for repeatable generation of 'random' true-negative
+% training examples. If left empty, UVnovo assigns a random seed, and the
+% training procedure will yield slightly different results each time it is run.
+params.predVecs.falseObs.rstreamSeed = 121212;
 
 
 

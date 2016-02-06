@@ -9,6 +9,9 @@ function [h, importanceTable] = plotPredictorImportance(varargin)
 %		'OOBPermutedVarCountRaiseMargin'>
 %		The last 2 scores metrics are nearly identical to the default,
 %			from what I've seen.
+%	'yScaleFactor' - Some relative importance metrics are scaled really
+%		differently. This opt (default 1) scales importance by power(val).
+%	'yTransform'- Function handle. Transform importance using this func.
 % h: handle
 % importanceTable: <cell (n x 3)> predictor name, rank, importance score
 % 
@@ -136,8 +139,10 @@ else
 	plotData = flipud([ensTB.VarNames(ia)', num2cell(1:nPreds)', ...
 		num2cell(predScoresSorted)']);
 end
-set(hBar, 'UserData', struct('data', {barData},  'format', {dataFormat}));
-set(hPlot,'UserData', struct('data', {plotData}, 'format', {dataFormat}));
+set(hBar, 'UserData', struct( 'data',{num2cell(barData,1)}, ...
+							  'format',{dataFormat}) );
+set(hPlot,'UserData', struct( 'data',{num2cell(plotData,1)}, ...
+							  'format',{dataFormat}) );
 
 % Set custom data cursor callback.
 dcm_obj = datacursormode(gcf);
