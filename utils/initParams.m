@@ -1,9 +1,9 @@
 function paramsOut = initParams(paramsDefault, paramsUser, varargin)
-% INITPARAMS Merge default and user-defined parameters.
-%	Combine a struct of default parameters with user-defined
-%		parameters, with the later taking precedence. The user-defined params 
-%		can be a struct, or name/value pairs which may be encapsulated in a
-%		cell.
+% INITPARAMS update a defaults parameter struct with user-defined values.
+%	Combine a struct of default parameters with user-defined parameters, with
+%	the later taking precedence. The user-defined params can be a struct or
+%	name/value pairs. The pairs may be encapsulated in a cell array. Additional
+%	params may be passed in varargin as name/val pairs, these taking precedence.
 % 
 %	INITPARAMS(PARAMSDEFAULT, PARAMSUSER, VARARGIN)
 %	INITPARAMS(PARAMSDEFAULT, VARARGIN)
@@ -11,13 +11,12 @@ function paramsOut = initParams(paramsDefault, paramsUser, varargin)
 % INPUT ARGS
 %	paramsDefault: <struct> default parameters
 %	paramsUser: <struct OR cell> user provided parameters.
-%		If <struct>, must have same numel as default when both are non-scalar.
 %		A paramsUser <cell> can be 1-D or {n x 2} of {param,val; ...}.
 %	varargin: name/value pairs of additional user parameters.
 % 
 % OUTPUT
-%	paramsOut: <struct> structured like paramsDefault with additional fields or
-%		dimensions depending on paramsUser and/or varargin.
+%	paramsOut: <struct [size(paramsUser)]> fields structured like paramsDefault
+%		with additional fields depending on paramsUser and/or varargin.
 % 
 % EXAMPLES
 %		paramsDef = struct('p1',1, 'p2',{{'hallo','wrold'}});
@@ -32,6 +31,17 @@ function paramsOut = initParams(paramsDefault, paramsUser, varargin)
 %		p4 = initParams(paramsDef, {'p1', 2, 'p0', 'yes'}, 'p55', [2,3,55]);
 %		isequal(p0, p1, p2, p3, p4)
 % 
+% 
+%	Default and user params needn't be scalars. The returned parameters struct
+%	takes the same size as paramsUser. When paramsDefault is larger, elements
+%	with a greater index than nUser are discarded.
+% 
+%	NOTE: When paramsDefault is a nonscalar struct with fewer elements than
+%		paramsUser, paramsDefault is padded to be the same size, using the last
+%		element of paramsDefault to pad with.
+%	Also, be careful if user and default param structs are both multidimensional
+%		with different sizes. The individual elements may not align correctly.
+
 
 if ~isstruct(paramsDefault)
 	error('initParams:defParamsNotStruct',...
@@ -83,48 +93,28 @@ end
 % Merge default and user parameters.
 nDef = numel(paramsDefault);
 nUser = numel(paramsUser);
-nOut = max(nUser, nDef);
+nOut = nUser;
 
-switch (nDef>1) + 2*(nUser>1)
-	case {0,1} % both == 1 OR nDef > 1
-		t_params = paramsDefault;
-		indsUser = ones(nOut,1);
-	case 2 % nUser > 1
-		t_params = repmat(paramsDefault,size(paramsUser));
-		indsUser = 1:nOut;
-	case 3 % both > 1
-		% This block got ugly.
-		if nDef == nUser
-			t_params = paramsDefault;
-			indsUser = 1:nOut;
-		elseif isempty(setdiff(fieldnames(paramsDefault), fieldnames(paramsUser)))
-			% Then we'll go with the user params.
-			t_params(size(paramsUser)) = struct;
-			if nDef > nUser
-				t_params(:) = paramsDefault(1:nUser);
-			else
-				t_params(1:nDef) = paramsDefault;
-			end
-			
-			nOut = nUser;
-			indsUser = 1:nUser;
-		else
-			error('initParams:DefAndUserMismatch', ...
-				['Default and user parameter structs must have == numel or'...
-				' fieldnames when both are not scalar.'])
-		end
+% Initilize temp struct of defaults that will be updated with user params.
+if nDef >= nUser
+	t_params = reshape(paramsDefault(1:nUser), size(paramsUser));
+else
+	t_params = repmat(paramsDefault(end), size(paramsUser));
+	t_params(1:nDef) = paramsDefault;
 end
+indsUser = 1:nOut;
+
 
 p_fields = fieldnames(paramsUser);
 for i = 1:numel(p_fields)
 	field = p_fields{i};
 	if ~isfield(t_params, field)
 		[t_params.(field)] = paramsUser(indsUser).(field);
-	else % update existing field with user-defined value
+	else % Update existing field with user-defined value.
 		for o = 1:nOut
 			iu = indsUser(o);
 			if isstruct(paramsUser(iu).(field)) && isstruct(t_params(o).(field))
-				% recursively fill in parameters of nested structs
+				% Recursively fill in parameters of nested structs.
 				t_params(o).(field) = initParams( ...
 					t_params(o).(field), ...
 					paramsUser(iu).(field) );
