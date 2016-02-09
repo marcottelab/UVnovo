@@ -22,7 +22,8 @@ end
 % ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ %
 % Load training data (spectra with corresponding PSM sequences).
 [msData, psmData, trainingDataFiles] = import_data(Meta);
-fprintf(1, 'File loaded:\n%s', sprintf('\t%s\n', trainingDataFiles{:}))
+fprintf(1, 'File loaded:%s', sprintf('\t%s\n', trainingDataFiles{:}))
+fprintf(1, 'Preparing data for random forest construction ... ')
 
 % Get nominal fragment masses (nodes) for theoretical fragment ions.
 [uniseqs, ~, seqs2uni] = unique({psmData.scans.seqAnno}');
@@ -79,15 +80,15 @@ wTrain = psmWeights([pvPos2psmData; pvNeg2psmData]);
 xTrainFull = cat(1, pvPosData.pvecs.preds, pvNegData.pvecs.preds);
 yTrain = [true(size(pvPos2psmData, 1), 1); false(size(pvNeg2psmData, 1), 1)];
 
-
 % ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ %
 % Iteratively train Random Forests and select best predictors from each round.
 
 % Parameters for each training round.
 ensParams = Meta.params.train.ensemble.iters;
 nIterations = numel(ensParams);
-
 featureImportances = cell(nIterations,1);
+
+fprintf(1, 'Done.\nTraining random forests over %g iterations ...\n', nIterations)
 for nIter = 1:nIterations
 	params = ensParams(nIter);
 	params.useParallel = Meta.params.UVnovo.useParallel;
@@ -120,15 +121,16 @@ for nIter = 1:nIterations
 	params.predNames = predNames(varInds);
 	
 	% Train a Random Forest and construct ensemble 'ensTB' of class TreeBagger.
-	fprintf(1,'Building ensemble of %d trees from %d predictors ...\n', ...
-		params.ntrees, nvars); tic
+	fprintf(1,'Round %g. Building %d trees from %d predictors ...\n', ...
+		nIter, params.ntrees, nvars); tic
 	ensTB = trainRF(xTrain, yTrain, wTrain, params);
-	fprintf(1,'\tEnsemble built in %f seconds.\n', toc)
+	fprintf(1,'\tRF constructed in %f seconds.\n', toc)
 	
 	% Calculate and plot out-of-bag error vs. number of trees grown.
 	% The oob error calculation (part of Matlab TreeBagger class) is slow.
 	if params.plotOOBError
-		plotOOBError(ensTB);
+		oobErrorVals = plotOOBError(ensTB);
+		fprintf(1,'\tOOB error: %f\n', oobErrorVals(end))
 	end
 	
 	% Get predictor importance metrics and ranks.
@@ -151,10 +153,10 @@ fnEns = io.genUniquePath( fullfile( outdir, fn));
 % Ens = compact(ensTB);
 Ens = ensTB;
 
-io.saveSer(fnEns, 'Ens')
-fprintf(1, 'UVnovo random forest training complete. Model saved to:\n\t%s', fnEns)
+io.saveSer(fnEns, 'Ens', 'featureImportances')
+% @TODO Save the predictor importance tables in text format.
 
-% @TODO Save the predictor importance tables.
+fprintf(1, 'UVnovo random forest training complete. Model saved to:\n\t%s', fnEns)
 
 varargout = {};
 
@@ -201,7 +203,7 @@ function [msData, psmData, files] = import_data(Meta)
 	elseif all(ismember({'spectra', 'psms'}, filetypes))
 		% Import from MS2 and psm files.
 		files = {paths.spectra.path; paths.psms.path};
-		msData = import_spectra(files{2}, Meta.params.pre.import_spectra);
+		msData = import_spectra(files{1}, Meta.params.pre.import_spectra);
 		psmData = import_psms(files{2}, 'verbosity', Meta.params.UVnovo.verbosity);
 	end
 	

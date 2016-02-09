@@ -72,7 +72,7 @@ if isempty(filesIn), return, end
 nfiles = numel(filesIn);
 msnData(nfiles, 1) = struct;
 for n = 1:nfiles
-	[msnData(n).meta.header, msnData(n).scans] = load_file( filesIn{n} );
+	[msnData(n).meta.fileheader, msnData(n).scans] = load_file( filesIn{n} );
 	msnData(n).meta.filename = fnames{n};
 	msnData(n).meta.path = filesIn{n};
 end

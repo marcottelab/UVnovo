@@ -21,7 +21,7 @@ function varargout = UVnovo(exec_mode, varargin)
 %	'-psms'    <filepath>  psms file. See IMPORT_PSMS for valid file formats.
 %	'-train'   <filepath>  training data prepared by UVNOVO PARTITION.
 %	'-test'    <filepath>  test data prepared by UVNOVO PARTITION.
-%	'-model'   <filepath>  model construct by UVNOVO TRAIN.
+%	'-rf'      <filepath>  random forest construct by UVNOVO TRAIN.
 %	'-denovo'  <filepath>  de novo sequencing results from UVNOVO DENOVO.
 % 
 % @TODO make a simple GUI for workflow and file selection.
@@ -46,7 +46,8 @@ switch exec_mode
 		varargout{1} = Meta;
 		
 	case 'denovo'
-		denovo(args)
+		Meta = denovo(args);
+		varargout{1} = Meta;
 		
 	case 'benchmark'
 		benchmark(args)
@@ -140,26 +141,25 @@ function varargout = train(argsIn)
 	% Get UVnovo parameters & update with user-provided params.
 	Meta.params = getParams(Meta.paths.params.path);
 	
-	% Update 'Meta' with experiment name & working/output directory.
-	t_expname = []; % @TODO populate with something.
-	if ~isempty(args.savedir)
-		t_expdir = args.savedir;
-	else
-		t_expdir = fileparts(Meta.paths.train.path);
-	end
-	Meta = initExperiment(Meta, t_expname, t_expdir);
+% 	% Update 'Meta' with experiment name & working/output directory.
+% 	t_expname = []; % @TODO populate with something.
+% 	if ~isempty(args.savedir)
+% 		t_expdir = args.savedir;
+% 	else
+% 		t_expdir = fileparts(Meta.paths.train.path);
+% 	end
+% 	Meta = initExperiment(Meta, t_expname, t_expdir);
 	
 	% Open matlabpool if using parallel computation & it's not already open.
 	% A just-opened pool closes when 'closepool_onCleanup' is destroyed, i.e.
 	% when this function returns or there's an error somewhere.
-	closepool_onCleanup = useParallel(Meta); %#ok<NASGU>
+	closepool_onCleanup = openParallel(Meta); %#ok<NASGU>
 	
 	% Build models from training data.
 	fprintf(1, 'Training UVnovo models ... \n')
 	
 	if ~isfield(args,'dryrun') || ~args.dryrun
 		UVnovo_train(Meta)
-% 		Meta.train = UVnovo_train(Meta);
 	end
 	
 	varargout = {Meta};
@@ -171,8 +171,9 @@ end
 function varargout = denovo(argsIn)
 	
 	argsTemplate = struct(...
-		'fn_test',    '', ...
-		'fn_model',   '', ...
+		'fn_spectra', '', ...
+		'fn_rf',      '', ...
+		'fn_AAmodel', fullfile(uvnovo_rootdir,'UVnovo','models','aaPairCounts_Ecoli_K12.txt'), ...
 		'fn_params',  uvnovo_rootdir, ...
 		'savedir',    ''  ...
 		);
@@ -184,36 +185,45 @@ function varargout = denovo(argsIn)
 	% Prompt for any file paths not defined in input args.
 	% @TODO allow selection of spectra file instead of test set.
 	filespec = cell2struct( { ...
-		'test',       args.fn_test,   1, {{'*Test*.mat';'*.mat'}, 'select test set', 'MultiSelect','off'};
-		'frag_model', args.fn_model,  1, {{'*RF*.mat';'*.mat'}, 'select trained fragmentation model', 'MultiSelect','off'};
-		'params',     args.fn_params, 0, {{'*params*.m';'*.m'}, '[OPTIONAL] select user parameter file', 'MultiSelect','off'};
+		'spectra', args.fn_spectra,1, {{'*.ms2';'*Test*.mat';'*.mat'}, 'select *.ms2 OR test set file', 'MultiSelect','off'}; 
+		'rf',      args.fn_rf,     1, {{'*RF*.mat';'*.mat'}, 'select trained fragmentation model', 'MultiSelect','off'}; 
+		'aamodel', args.fn_AAmodel,1, {{'aaPairCounts*.mat';'*.mat'}, 'select trained fragmentation model', 'MultiSelect','off'}; 
+		'params',  args.fn_params, 0, {{'*params*.m';'*.m'}, '[OPTIONAL] select user parameter file', 'MultiSelect','off'}; 
 		}, {'type', 'path', 'required', 'uigetfile_args'}, 2);
-	Meta.paths = getFiles( filespec );
+	
+	% Differentiate between test.mat and *.ms2 spectra files.
+	% @TODO this should be elsewhere. See getFiles_refactoring.
+	t_paths = getFiles( filespec );
+	[~,~,ext] = fileparts(t_paths.spectra.path);
+	if strcmpi(ext,'.mat')
+		t_paths.test = t_paths.spectra;
+		t_paths = rmfield(t_paths, 'spectra');
+	end
+	Meta.paths = t_paths;
 	
 	% Get UVnovo parameters & update with user-provided params.
 	Meta.params = getParams(Meta.paths.params.path);
 	
-	% Update 'Meta' with experiment name & working/output directory.
-	t_expname = []; % @TODO populate with something.
-	if ~isempty(args.savedir)
-		t_expdir = args.savedir;
-	else
-		t_expdir = fileparts(Meta.paths.test.path);
-	end
-	Meta = initExperiment(Meta, t_expname, t_expdir);
+% 	% Update 'Meta' with experiment name & working/output directory.
+% 	t_expname = []; % @TODO populate with something.
+% 	if ~isempty(args.savedir)
+% 		t_expdir = args.savedir;
+% 	else
+% 		t_expdir = fileparts(Meta.paths.test.path);
+% 	end
+% 	Meta = initExperiment(Meta, t_expname, t_expdir);
 	
 	% Open matlabpool if using parallel computation & it's not already open.
-	closepool_onCleanup = useParallel(Meta); %#ok<NASGU>
+	closepool_onCleanup = openParallel(Meta); %#ok<NASGU>
 	
 	% De novo sequencing!
 	fprintf(1, 'De novo sequencing ... \n')
 	
 	if ~isfield(args,'dryrun') || ~args.dryrun
-% 		UVnovo_denovo(Meta)
-% 		Meta.denovo = UVnovo_denovo(Meta);
+		UVnovo_denovo(Meta)
 	end
 	
-	varargout = {};
+	varargout = {Meta};
 	fprintf(1,'Done.\n')
 end
 
@@ -233,7 +243,6 @@ function varargout = benchmark(argsIn)
 	Meta = struct;
 	
 	% Prompt for any file paths not defined in input args.
-	% @TODO allow selection of spectra file instead of test set.
 	filespec = cell2struct( { ...
 		'denovo',     args.fn_denovo, 1, {{'*Predictions*.mat';'*.mat'}, 'select de novo results', 'MultiSelect','off'};
 		'psms',       args.fn_psms,   1, {'*.xlsx;*.xls', 'select psm file', 'MultiSelect','off'};
@@ -258,7 +267,7 @@ function varargout = benchmark(argsIn)
 	
 	UVnovo_benchmark(Meta)
 	
-	varargout = {};
+	varargout = {Meta};
 	fprintf(1,'Done.\n')
 end
 
@@ -280,8 +289,9 @@ function updatepath()
 		'./core_ms'
 		'./core_ms/fileIO'
 		'./UVnovo'
-		'./UVnovo/to_deprecate'
 		'./UVnovo/models'
+		'./UVnovo/plotting'
+		'./UVnovo/to_deprecate'
 		'./utils'
 		};
 	append_paths = fullfile(uvnovo_rootdir, append_relpaths);
@@ -301,8 +311,8 @@ function args = parseArgs(varargin)
 		'-ms2',    'fn_spectra'
 		'-psms',   'fn_psms'
 		'-train',  'fn_train'
-		'-test',   'fn_test'
-		'-model',  'fn_model'
+		'-test',   'fn_spectra'
+		'-rf',     'fn_rf'
 		'-denovo', 'fn_denovo'
 		};
 	
@@ -362,6 +372,8 @@ function files = getFiles(filespec)
 	%	.uigetfile_args: <cell> arguments for uigetfile() if path not defined.
 	% 
 	% @TODO What if user allowed to select multiple files?
+	% @TODO improve input file handling when there's overlap between file
+	%	purposes. Ex: [train | ms2/psms], [test|ms2]. See getFiles_refactoring.
 	
 	files = struct;
 	nFiles = numel(filespec);
@@ -487,7 +499,8 @@ function Meta = initExperiment(Meta, default_expname, default_savedir)
 	% Get experiment name.
 	% @TODO validate user-defined name.
 	prompt = 'Enter experiment name.';
-	expname = inputdlg(prompt, 'UVnovo experiment', 1, {default_expname});
+	expname = inputdlg(prompt, 'UVnovo experiment', ...
+		[1, max(30, 3 + length(default_expname))], {default_expname}, 'on');
 	
 	% Get experiment working directory.
 	% @TODO uigetdir is clunky. I have something better than this somewhere.
@@ -511,12 +524,12 @@ function Meta = initExperiment(Meta, default_expname, default_savedir)
 	% 	mkdir(expdir)
 end
 
-function closepool_onCleanup = useParallel(Meta)
+function closepool_onCleanup = openParallel(Meta)
 	
 	pool_opened = false;
 	if Meta.params.UVnovo.useParallel
 		if isempty(ver('distcomp')) % Is parallel computing toolbox available?
-			warning('UVnovo:DistcompNotAvailable', ...
+			warning('UVnovo:openParallel:DistcompNotAvailable', ...
 				'Parallel computing toolbox is not available. UVnovo will run in a single process.')
 		
 		elseif ~matlabpool('size')

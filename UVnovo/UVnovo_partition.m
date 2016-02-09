@@ -18,13 +18,15 @@ psmData = import_psms(paths.psms.path, 'verbosity',params.UVnovo.verbosity);
 
 % Partition for cross-validation.
 nPartitions = params.pre.crossVal.nPartitions;
+fprintf(1,'Partitioning spectra and psms into %g cross validation sets ...\n', nPartitions)
+
 partitions = partition_psms(psmData, nPartitions);
 
 % Index between psmData.scans & msData.scans. Assign later to same partitions.
-mapi = cross_index(psmData, msData);
+[~, psm2ms] = ismember([psmData.scans.nscan]', [msData.scans.nscan]');
 for n = 1:nPartitions
-	partitions(n).test.msData =  mapi.psmData.msData(partitions(n).test.psmData);
-	partitions(n).train.msData = mapi.psmData.msData(partitions(n).train.psmData);
+	partitions(n).test.msData =  psm2ms(partitions(n).test.psmData);
+	partitions(n).train.msData = psm2ms(partitions(n).train.psmData);
 end
 
 % Create and save training and test sets.
@@ -47,6 +49,8 @@ for n = 1:nPartitions
 	t_partitionDir = fullfile(paths.exp.path, sprintf('part%g', n));
 	partitionDir = io.genUniquePath( t_partitionDir );
 	mkdir(partitionDir)
+	
+	fprintf(1, 'Saving partition %g to %s\n', n, partitionDir)
 	
 	% Create and save test partition vars.
 	% @TODO save test partition as MS2 file. (?)

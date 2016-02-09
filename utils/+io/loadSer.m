@@ -13,12 +13,12 @@ function vars = loadSer(filename, asStruct)
 if ~exist('asStruct','var') || isempty(asStruct), asStruct = false; end
 
 assert(logical(exist(filename,'file')), ...
-	'Unable to read ''%s'': no such file or directory.', filename)
+	'Unable to read ''%s''.\n\tNo such file or directory.', filename)
 
 builtin('load',filename);
 
 assert(logical(exist('bs','var')), ...
-	'File to load must originate from io.saveSer() or match its format.')
+	'Cannot load ''%s''.\n\tFile must have io.saveSer() format.', filename)
 
 varStruct = getArrayFromByteStream(bs);
 if asStruct
