@@ -10,9 +10,14 @@ function seqsAnno = annotateSeqs(seqsIn, ptmsIn, ptmLib)
 %	seqsAnno: <cellstr [n x 1]> sequences annotated in accordance with
 %		MSpepmass, MSsynthspec, and the like.
 % 
-% EXAMPLE
-%	seqsIn{1} = {'mADmAX'}; ptmsIn{1} = {'N-Term(AMCA); M4(Oxidation)'}
-%	-->  seqsAnno = 'M[+215.058243]ADM[+15.99495]AX'
+% EXAMPLES
+%	seqsIn = {'mADmAX', 'PEpPHAW'};
+%	ptmsIn = {'N-Term(AMCA); M4(Oxidation)', 'P4(Oxidation)'}
+%	-->  seqsAnno = {'M[+215.058243]ADM[+15.994915]AX', 'PEpP[+15.994915]HAW'}
+%	% NOTE: The first sequence and ptm spec match in that lowercase symbols and
+%		ptms align. This yields a well-formatted annotated sequence. The ptm
+%		spec for the second sequence does not align with the lower-case Pro, and
+%		this symbol remains lowercase and unmodified in the output.
 % 
 % @TODO This doesn't yet interpret all Sequest modification syntax
 % 
@@ -24,10 +29,11 @@ function seqsAnno = annotateSeqs(seqsIn, ptmsIn, ptmLib)
 % !! What should I do about 'x' in sequence & 'X3(L)' in mod list??? Doesn't
 %	fit into nice framework below.
 % 
-% @TODO make this accept a cellstr instead of cell of cellstr.
 % @TODO review this function code.
 % @TODO Fix edge case. PTM string assumed to match seq when mods stack.
 %	ex. 'kMAD', 'N-Term(AMCA);M1(Oxidation)' still adds +215,+16 to k.
+% 
+% See also MSAALIST, MSPEPMASS, MSSYNTHSPEC.
 
 
 if (numel(seqsIn) == 0) || ((numel(seqsIn) == 1) && isempty(seqsIn{1}))
@@ -36,6 +42,7 @@ if (numel(seqsIn) == 0) || ((numel(seqsIn) == 1) && isempty(seqsIn{1}))
 end
 
 if ~exist('ptmLib','var') || ~isstruct('ptmLib')
+	% struct of ( ptm_name {str} => monoisotopic_mass {double} )
 	ptmLib = CONSTS.mPTM;
 end
 

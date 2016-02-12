@@ -1,33 +1,36 @@
 function varargout = UVnovo(exec_mode, varargin)
-% UVNOVO
+% UVNOVO initializes the UVnovo environment (parameters, paths, etc) and
+%	delegates execution to one of four main workflow functions.
+% 
+% UVNOVO(EXEC_MODE, VARARGIN)
+% 
+% 	EXEC_MODE program execution workflow
+% 	  'partition'    Import data and create training and test sets.
+% 	  'train'        UVnovo training. Make random forest from known spectra.
+% 	  'denovo'       Perform de novo sequencing on unknown spectra.
+% 	  'benchmark'    Compare de novo results to PSM knowledge.
+% 
+%	VARARGIN name-value pairs
+%	  '-h' or '-help'        Print help and exit.
+%	  '-recipe'  <filepath>  text file recipe for automated analysis. @TODO!
+%	  '-params'  <filepath>  user-defined parameters function.
+%	  '-savedir' <dirpath>   directory in which to save results.
+%	  '-ms2'     <filepath>  *.ms2 spectra file.
+%	  '-psms'    <filepath>  psms file. See IMPORT_PSMS for valid file formats.
+%	  '-train'   <filepath>  training data prepared by UVNOVO PARTITION.
+%	  '-test'    <filepath>  test data prepared by UVNOVO PARTITION.
+%	  '-rf'      <filepath>  random forest constructed by UVNOVO TRAIN.
+%	  '-denovo'  <filepath>  de novo sequencing results from UVNOVO DENOVO.
 % 
 % @TODO add documentation.
-% 
-%	This function initializes the UVnovo environment (parameters, paths, etc)
-%	and delegates execution to one of four main workflow functions.
-% 
-% EXEC_MODE program execution workflow
-%	'partition'    Import data and create training and test sets.
-%	'train'        UVnovo training. Construct random forests from known spectra.
-%	'denovo'       Perform de novo sequencing on unknown spectra.
-%	'benchmark'    Compare de novo results to PSM knowledge.
-% 
-% VARARGIN name value pairs
-%	'-h' or '-help'        Print help and exit.
-%	'-recipe'  <filepath>  text file recipe for automated analysis. @TODO!
-%	'-params'  <filepath>  user-defined parameters function.
-%	'-savedir' <dirpath>   directory in which to save results.
-%	'-ms2'     <filepath>  *.ms2 spectra file.
-%	'-psms'    <filepath>  psms file. See IMPORT_PSMS for valid file formats.
-%	'-train'   <filepath>  training data prepared by UVNOVO PARTITION.
-%	'-test'    <filepath>  test data prepared by UVNOVO PARTITION.
-%	'-rf'      <filepath>  random forest construct by UVNOVO TRAIN.
-%	'-denovo'  <filepath>  de novo sequencing results from UVNOVO DENOVO.
-% 
 % @TODO make a simple GUI for workflow and file selection.
 % 
 %	See also UVNOVO_TRAIN, UVNOVO_PARTITION, UVNOVO_DENOVO.
 
+if nargin == 0
+	help(which(mfilename('fullpath')))
+	return
+end
 
 % Add directories associated with UVnovo to the Matlab search path.
 updatepath()

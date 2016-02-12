@@ -3,18 +3,12 @@ function params = user_params()
 %	Any specified here replace the values located in ./UVnovo/default_params().
 
 
-%% Data import and setup of training and validation datasets
-
 % Primary parent mass field name.
 params.pre.import_spectra.pmass_field = 'pmass_theorNormmass';
 
 
-
 % Amino acids
-% @TODO I'm not happy with how this works. Make it better.
 params.AAs = struct( ...
-	... disallowed amino acids
-	'excludeAAs', 'CK', ...  % cysteine was not alkylated in Ecoli samples :(
 	...	N/C-terminal derivatization fixed mass
 	'ncderiv', [CONSTS.mPTM.AMCA, 0], ...
 	...	PTMs: <2 x n> cell of { symbol<char>, mass<real>; ... }

@@ -19,7 +19,7 @@ function synth_spec = MSsynthspec(seqIn, AAs, ions, prettyprint)
 %	Some other packages do the same, but the mass off by 0.000549 Da.
 % @TODO refactor input args into standard framework.
 % 
-% 
+% See also MSAALIST, MSPEPMASS, ANNOTATESEQS.
 
 
 %%% Parse input args
@@ -151,39 +151,46 @@ if prettyprint % print table of residues, masses, and cumulative masses
 		end
 	end
 	
-	if strcmp(AAs.masstype, 'nominal')
-		pre = regexp(massAdditionStrs,'^[+-]','match','once');
-		massAdditionStrs = strcat(pre, sprintfc('%g',massAdditions));
-	end
-	
-	z = cellstr(sequence');
-	x = cell(n_masses,1);
-	xi = 1;
-	zi = 1;
-	for r = 1:numel(massAdd_locations)
-		i = massAdd_locations(r);
-		while zi <= i
-			x{xi} = z{zi};
-			xi = xi+1;
-			zi = zi+1;
+	if ~isempty(massAdd_locations)
+		if strcmp(AAs.masstype, 'nominal')
+			pre = regexp(massAdditionStrs, '^\+', 'match', 'once');
+			massAdditionStrs = strcat(pre, sprintfc('%g', massAdditions));
 		end
-		if massAddPTMinds(r)
-			x{xi-1} = [x{xi-1} '[' massAdditionStrs{r} ']'];
-		else
-			x{xi} = ['[' massAdditionStrs{r} ']'];
-			xi = xi+1;
+		z = cellstr(sequence');
+		x = cell(n_masses,1);
+		xi = 1;
+		zi = 1;
+		for r = 1:numel(massAdd_locations)
+			i = massAdd_locations(r);
+			while zi <= i
+				x{xi} = z{zi};
+				xi = xi+1;
+				zi = zi+1;
+			end
+			if massAddPTMinds(r)
+				x{xi-1} = [x{xi-1} '[' massAdditionStrs{r} ']'];
+			else
+				x{xi} = ['[' massAdditionStrs{r} ']'];
+				xi = xi+1;
+			end
 		end
+		x(xi:end) = z(zi:end);
+	else
+		x = cellstr(sequence');
 	end
-	x(xi:end) = z(zi:end);
-	
 	
 	maxlen = max(length(ionHeaders{1}), max(cellfun('length',x)));
 	frmtSpec =  cell(1,numel(ions)+1);
 	frmtSpecHdr =  cell(1,numel(ions)+1);
 	frmtSpec{1} = ['\t%-' num2str(maxlen) 's'];
-	frmtSpec(2:1+numel(ions)) = {'%-9.3f'};
 	frmtSpecHdr{1} = ['\n\t%-' num2str(maxlen) 's'];
-	frmtSpecHdr(2:1+numel(ions)) = {'%-9s'};
+	if strcmp(AAs.masstype, 'nominal')
+		frmtSpec(2:1+numel(ions)) = {'%-6.0f'};
+		frmtSpecHdr(2:1+numel(ions)) = {'%-6s'};
+	else
+		frmtSpec(2:1+numel(ions)) = {'%-9.3f'};
+		frmtSpecHdr(2:1+numel(ions)) = {'%-9s'};
+	end
 	
 	ntermDiffs = [];
 	t = find(ismember(ions,'nabc'),1);

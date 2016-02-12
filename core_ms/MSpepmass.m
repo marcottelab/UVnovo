@@ -21,6 +21,7 @@ function seqmass = MSpepmass(sequences, aas, mhPlus, aaOnly)
 %	bracketed masses ('seqs' should be a cellstr):
 %	f_pepmass = @(seqs,aas) sum( aas.m.h2o + aas.m.prot + sum(aas.ncderiv)) + cellfun(@(x)sum(str2double(x)), regexp(regexprep(seqs,{'(^\[|\]$)','[A-Z]+'},{'','${num2str(sum(aas.intaa2mass($0)),''%.6f'')}'}), '(\]\[|[\[\]])', 'split'));
 % 
+% See also MSAALIST, MSSYNTHSPEC, ANNOTATESEQS.
 
 if ~exist('mhPlus','var')||isempty(mhPlus), mhPlus = true; end
 if ~exist('aaOnly','var')||isempty(aaOnly), aaOnly = false; end

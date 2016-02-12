@@ -1,5 +1,7 @@
-function massTransitionMat = massTransMat(aaCountsFile, paramsAAs)
+function [massTransitionMat, AAs_tm] = massTransMat(aaCountsFile, paramsAAs)
 % MASSTRANSMAT marginalize aa-based transition matrix by unit masses.
+% 
+% @TODO Rename function & vars. Add documentation.
 
 % This assumes all amino acids and ptms have their own single-char symbol.
 
@@ -19,12 +21,12 @@ ctermAA_counts = x.data(end, :);
 aaSyms = strsplit( strtrim( x.textdata{1} ));
 
 
-
-[~,ia] = ismember([aaSyms{:}], AAs.aas);
+[i,ia] = ismember([aaSyms{:}], AAs.aas);
+assert(all(i), 'Undefined residue symbols ''%s'' in aa counts file.', ...
+	strjoin(aaSyms(~i), ', '))
 [aaIntmass,ic] = sort(AAs.aamass(ia)); % sort by ascending mass
 
 aa = [aaSyms{ic}];
-
 
 % Map between integer mass and symbol(s).
 [unimass, uni2full_first, full2uni] = unique(aaIntmass);
@@ -50,10 +52,27 @@ mbackward = bsxfun(@rdivide, combinedCounts,  sum(combinedCounts));
 massTransitionMat = struct( ...
 	'forward', mforward, ...
 	'backward', mbackward, ...
-	'raw', combinedCounts, ...
+	...'raw', combinedCounts, ...
 	'start', mstart, ...
 	'end', mend, ...
 	'massSyms', aa( uni2full_first ), ... % unique symbol for each mass
 	'masses', unimass, ...
 	'mass2symbol', mass2symbol);
+
+% Get AAs_tm: a struct of the residues that define valid HMM transistions.
+excludeAAs = AAs.aas( ~ismember(AAs.aas, [aaSyms{:}]) );
+if any(excludeAAs)
+	if isfield(paramsAAs, 'excludeAAs')
+		paramsAAs.excludeAAs = [paramsAAs.excludeAAs, excludeAAs];
+	else
+		paramsAAs.excludeAAs = excludeAAs;
+	end
+	AAs_tm = MSaalist(paramsAAs, 'masstype', 'nominal');
+else
+	AAs_tm = AAs;
+end
+
+
+
+
 

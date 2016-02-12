@@ -17,12 +17,12 @@ params.UVnovo.matlabpool_varargs = {4};
 % Amino acids
 % @TODO I'm not happy with how this works. Make it better.
 params.AAs = struct(  ...
-	'excludeAAs', '', ...  % disallowed amino acids
+	... 'excludeAAs', '', ...  % Disallowed amino acids. -> Now inferred from aa counts file.
 	'ncderiv', [0, 0], ... % N/C-terminal derivatization fixed mass
 	'ptms', ... % PTMs: <2 x n> cell of { symbol<char>, mass<real>; ... }
 		{{
 			'm', CONSTS.mAA.M + CONSTS.mPTM.Oxidation;
-		}} ....
+		}} ...
 	);
 
 

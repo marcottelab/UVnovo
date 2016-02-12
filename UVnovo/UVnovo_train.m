@@ -49,17 +49,17 @@ mapi.msData.nodes = mapi.psmData.nodes(mapi.msData.psmData);
 predNames = initPredictorNames(Meta);
 
 scans = msData.scans;
-scans2nodes = mapi.msData.nodes;
+scan2node = mapi.msData.nodes;
 pvparams = Meta.params.predVecs;
 
 % Predictor vectors-- True observations.
-pvPosData = createPredVecs(scans, nodes, scans2nodes, predNames, pvparams);
+pvPosData = createPredVecs(scans, nodes, scan2node, predNames, pvparams);
 
 % Randomly shift nodes.
 % @TODO The shifts are inconsistent with previous program!
 nodesNeg = rshiftNodes(Meta, nodes);
 % Predictor vectors-- Negative training examples.
-pvNegData = createPredVecs(scans, nodesNeg, scans2nodes, predNames, pvparams);
+pvNegData = createPredVecs(scans, nodesNeg, scan2node, predNames, pvparams);
 
 
 % ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ %
@@ -162,7 +162,7 @@ varargout = {};
 
 end
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
@@ -178,7 +178,7 @@ function plotting_placeholder()
 end
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% Subfunctions
 
 
@@ -216,8 +216,13 @@ function nodes = getSeqNodes(seqs)
 	% amino acid residue series in the n- and c-terminal directions. These are
 	% nominal masses (count of neutrons + protons).
 	% 
-	% SEQS <cellstr> annotated peptide sequences.
-	
+	% SEQS <cellstr {n x 1}> annotated peptide sequences.
+	% 
+	% NODES <struct [n x 1]> peptide fragment mass nodes.
+	%	.pmass_n <int> mass of all peptide residues (nominal pepmass - 19 Da)
+	%	.fwd <array> forward nodes
+	%	.rev <array> reverse nodes (pmass_n - nodes.fwd)
+
 	% Struct of amino acid, n/c-term, and elemental nominal masses.
 	aas_nom = MSaalist('masstype','nominal');
 	

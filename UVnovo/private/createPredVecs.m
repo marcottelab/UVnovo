@@ -1,4 +1,4 @@
-function predVecs = createPredVecs(scans, nodes, scans2nodes, predNames, paramsIn)
+function predVecs = createPredVecs(scans, nodes, scan2node, predNames, paramsIn)
 % CREATEPREDVECS construct vectors of fragment ion predictor variables.
 % 
 % For each predefined position in a spectrum, construct the set of predictor
@@ -25,7 +25,7 @@ function predVecs = createPredVecs(scans, nodes, scans2nodes, predNames, paramsI
 %		.pmass_n <double> 
 % 		.fwd <array> forward nodes
 % 		.rev <array> reverse nodes (pmass_n - nodes.fwd)
-% 	scans2nodes <1 x n array> Index in nodes for each element in scans.
+% 	scan2node <1 x n array> Index in nodes for each element in scans.
 %	predNames <cellstr> name of predictor for each ensemble feature vector.
 %	paramsIn <struct>
 %		.mzThreshold  [1 x 2] ms2 m/z peak window.
@@ -80,7 +80,7 @@ zeroOffsets = cell2struct(t,{'nterm','cterm'},2);
 % scan -- one for each mass position used during training or prediction.
 % Create indices between the prediction vectors and scans.
 t = cellfun('size', nodesFwdRev, 1);
-npv = t(scans2nodes); % number of predictor vectors per scan
+npv = t(scan2node); % number of predictor vectors per scan
 pvec2scan = cumsum( accumarray(cumsum([1;npv(1:end-1)]), 1, [sum(npv),1] ) );
 scan2pvec = accumarray(pvec2scan, 1:numel(pvec2scan), [], @(x){x});
 
@@ -94,20 +94,20 @@ localThresh = params.localPeakWin;
 %	returns vector, not 2D matrix (easy to fix).
 accumArgs = {'rank',@min,nan};
 mzrankPreds = cell2mat( ...
-	mzBinVals( specToBin, nodesFwdRev, scans2nodes, mzOffsets, mzThresh, accumArgs) ...
+	mzBinVals( specToBin, nodesFwdRev, scan2node, mzOffsets, mzThresh, accumArgs) ...
 	);
 
 % Get the min rank (highest intensity) peak in a sliding window along spectra.
 % wide thresh -> a lot slower!! Fix this!
 accumArgs = {'rank',@min,0};
 localMinRanks = cell2mat( ...
-	mzBinVals( specToBin, nodesFwdRev, scans2nodes, zeroOffsets, localThresh, accumArgs) ...
+	mzBinVals( specToBin, nodesFwdRev, scan2node, zeroOffsets, localThresh, accumArgs) ...
 	);
 
 % Index into localMinRanks to map back to mzranks, for peak score normalizing.
 lmr2mzr = cumsum( accumarray([1,1+unique(cumsum(mzOffsetCounts(1:end-1)))]', 1, ...
 	[sum(mzOffsetCounts(:)),1]))';
-pmass_n = [nodes(scans2nodes).pmass_n];
+pmass_n = [nodes(scan2node).pmass_n];
 
 
 % Normalize peak ranks by the lowest-ranked neighboring peaks. The mzOffset
@@ -121,7 +121,7 @@ clear mzrankPreds localMinRanks specToBin
 
 %% Get derived predictor vars.
 derivedPreds = cell2mat( ...
-	derivedPredictors(nodes(scans2nodes), {'appendPredictors', otherPreds})...
+	derivedPredictors(nodes(scan2node), {'appendPredictors', otherPreds})...
 	);
 
 
@@ -131,7 +131,7 @@ predVecs = struct( ...
 	'varNames', {predNames}, ...
 	'meta', struct('params', params), ...
 	'pvecs', struct( ...
-		'nodes', {nodes(scans2nodes).fwd}, ...
+		'nodes', {nodes(scan2node).fwd}, ...
 		'preds', []) ...
 	);
 

@@ -2,9 +2,9 @@ function AAs = MSaalist(varargin)
 % Initialize amino acids, their masses, and other needed masses.
 % 
 % Masses are by default exact monoisotopic, measured in Da.
-%	When parameter 'masstype' is set to 'nominal', this returns nominal (int
-%	count of protons + neutrons) values. PTM and ncderiv nominal masses as
-%	estimated as round(m_Da/CONSTS.unit_g).
+%	When parameter 'masstype' is set to 'nominal', this returns nominal (integer
+%	count of protons + neutrons) values. PTM and ncderiv nominal masses are
+%	estimated as round(Dalton_mass/CONSTS.unit_g).
 % 
 % OUTPUT
 %	AAs <struct>
@@ -22,9 +22,7 @@ function AAs = MSaalist(varargin)
 % @TODO rewrite this and make it better. -- In progress. See MSaalist_refactor.
 %	Mainly, the ptm definitions could be more flexible & powerful.
 % 
-% Deprecated call:
-% AAs = MSaalist(custptm, monoavg, c_alkyl, ncderiv, percmass, intMasses)
-
+% See also MSPEPMASS, MSSYNTHSPEC, ANNOTATESEQS.
 
 %%% Parameters %%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%
@@ -41,16 +39,6 @@ paramsDef = struct( ...
 	);
 
 params = initParams(paramsDef, varargin{:});
-
-if ~isempty(params.excludeAAs)
-	warning('MSaalist excludeAAs parameter will be deprecated. DO THIS!')
-	params.excludeAAs = '';
-end
-
-if isfield(params,'custptm')
-	warning('MSaalist parameter name ''custptm'' is deprecated. Use instead ''ptms''')
-	params.ptms = params.custptm;
-end
 assert(numel(params) == 1)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

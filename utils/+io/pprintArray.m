@@ -105,8 +105,9 @@ end
 
 % @TODO make code consistent between the row & column name parsing
 if printColNames
-	
-	if isnumeric(colNames)
+	nc = numel(colNames);
+	if isnumeric(colNames) || ( ischar(colNames) && ...
+			( (nc == arrayWidth) || (nc == arrayWidth + 1) ))
 		colNames = num2cell(colNames);
 	elseif ~iscellstr(colNames) % not consistent with row name parsing!
 		if ischar(colNames)
