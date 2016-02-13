@@ -147,11 +147,11 @@ clear mzenuf derivedPreds
 
 if ~issorted(ia)
 	for i = 1:nscans
-		predVecs.pvecs(i).preds = preds(scan2pvec{i},ia);
+		predVecs.pvecs(i,1).preds = preds(scan2pvec{i},ia);
 	end
 else
 	for i = 1:nscans
-		predVecs.pvecs(i).preds = preds(scan2pvec{i},:);
+		predVecs.pvecs(i,1).preds = preds(scan2pvec{i},:);
 	end
 end
 
