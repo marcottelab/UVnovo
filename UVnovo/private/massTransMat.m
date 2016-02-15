@@ -1,7 +1,26 @@
 function [massTransitionMat, AAs_tm] = massTransMat(aaCountsFile, paramsAAs)
 % MASSTRANSMAT marginalize aa-based transition matrix by unit masses.
 % 
-% @TODO Rename function & vars. Add documentation.
+% OUTPUT
+%	massTransitionMat <scalar struct>
+%		.masses      <double [n x 1]> The set of valid mass transitions.
+%		.massSyms    <char 1 x n> Canonical residue symbol for each unique mass.
+%					 Iobarics (e.g. I/L) are reduced to a single symbol.
+%		.mass2symbol <containers.Map> Map each mass to residue symbol(s).
+%		.symbol2mass <double [127 x 1]> Mass at each position (converting symbol
+%					 char to double) for defined residue symbols. Otherwise NaN.
+%					 Ex. symbol2mass('A') == symbol2mass(65) == mass of 'A'
+%		.ncderiv     <double [1 x 2]> N-, C-terminal constant masses.
+%		.forward     <double [n x n]> At index [i, j], expected frequency that
+%					 mass j follows mass i in an HMM peptide model. Rows and
+%					 cols correspond to values in the .masses field. This matrix
+%					 is marginalized against first mass (columns sum to 1).
+%		.backward    <double [n x n]> As .forward, but from C- to N-term.
+%		.start       <double [n x 1]> Frequency each mass is first of peptide.
+%		.end         <double [n x 1]> Frequency each mass is last of peptide.
+% 
+% @TODO Refactor. Get rid of AAs_tm here and in calling code.
+% @TODO Rename this function & vars. Add documentation.
 
 % This assumes all amino acids and ptms have their own single-char symbol.
 
@@ -35,6 +54,10 @@ uni2full = accumarray(full2uni, 1:numel(aa), [numel(unimass), 1], @(x){x});
 t = cellfun(@(x) aa(x), uni2full, 'UniformOutput', false);
 mass2symbol = containers.Map(unimass, t);
 
+excludeAAs = AAs.aas( ~ismember(AAs.aas, [aaSyms{:}]) );
+symbol2mass = AAs.intaa2mass;
+symbol2mass(excludeAAs) = nan;
+
 % Combine isobaric counts in matrix of AA transition counts.
 % Frequency of C-terminal residues.
 mstart = accumarray(full2uni, ntermAA_counts) / sum(ntermAA_counts);
@@ -50,28 +73,32 @@ mforward  = bsxfun(@rdivide, combinedCounts', sum(combinedCounts,2)');
 mbackward = bsxfun(@rdivide, combinedCounts,  sum(combinedCounts));
 
 massTransitionMat = struct( ...
+	'masses', unimass, ...
+	'massSyms', aa( uni2full_first ), ... % unique symbol for each mass
+	'mass2symbol', mass2symbol, ...
+	'symbol2mass', symbol2mass, ...
+	'ncderiv', AAs.ncderiv, ...
 	'forward', mforward, ...
 	'backward', mbackward, ...
-	...'raw', combinedCounts, ...
 	'start', mstart, ...
-	'end', mend, ...
-	'massSyms', aa( uni2full_first ), ... % unique symbol for each mass
-	'masses', unimass, ...
-	'mass2symbol', mass2symbol);
+	'end', mend ...
+	);
 
-% Get AAs_tm: a struct of the residues that define valid HMM transistions.
-excludeAAs = AAs.aas( ~ismember(AAs.aas, [aaSyms{:}]) );
-if any(excludeAAs)
-	if isfield(paramsAAs, 'excludeAAs')
-		paramsAAs.excludeAAs = [paramsAAs.excludeAAs, excludeAAs];
+if nargout > 1
+	warning('massTransMat:Deprecate','Deprecate calculation of AAs struct.')
+	% Get AAs_tm: a struct of the residues that define valid HMM transistions.
+	excludeAAs = AAs.aas( ~ismember(AAs.aas, [aaSyms{:}]) );
+	if any(excludeAAs)
+		if isfield(paramsAAs, 'excludeAAs')
+			paramsAAs.excludeAAs = [paramsAAs.excludeAAs, excludeAAs];
+		else
+			paramsAAs.excludeAAs = excludeAAs;
+		end
+		AAs_tm = MSaalist(paramsAAs, 'masstype', 'nominal');
 	else
-		paramsAAs.excludeAAs = excludeAAs;
+		AAs_tm = AAs;
 	end
-	AAs_tm = MSaalist(paramsAAs, 'masstype', 'nominal');
-else
-	AAs_tm = AAs;
 end
-
 
 
 

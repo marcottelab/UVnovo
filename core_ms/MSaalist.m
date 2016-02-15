@@ -33,7 +33,6 @@ paramsDef = struct( ...
 		{{
 			'm', CONSTS.mAA.M + CONSTS.mPTM.Oxidation;
 		}}, ...
-	'c_alkyl', 'none', ... Deprecate!! Cys alkylation: 'IE' iodoethanol; 'IAM' iodoacetamide; 'none'
 	'ncderiv', [0 0], ... N- or C-terminal fixed masses (derivitization)
 	'excludeAAs', '' ... <str> exclude each symbol from output
 	);
@@ -57,15 +56,6 @@ m.co = CONSTS.mCO;
 m.nh = CONSTS.mNH;
 m.oh = CONSTS.mOH;
 % m.unit_g is assigned below.
-
-% @TODO merge this alkylation stuff with the ptm definitions
-alkyls.IAM = CONSTS.mPTM.Carbamidomethyl;
-alkyls.IE = CONSTS.mPTM.Ethanolyl;
-alkyls.none = 0;
-if ismember(params.c_alkyl,{'IAM','IE'})
-	aas(end+1) = 'c';
-	aamass(end+1) = CONSTS.mAA.C + alkyls.(params.c_alkyl);
-end
 
 ptms = params.ptms;
 if ~isempty(ptms)

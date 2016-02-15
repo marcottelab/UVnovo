@@ -22,7 +22,7 @@ end
 fprintf(1, 'Importing spectra and UVnovo models ... ')
 % AAs_HMM: struct of amino acid, n/c-term, and elemental nominal masses for HMM.
 [msData, Ens, TransMat, AAs_HMM] = import_data(Meta);
-fprintf(1, 'Done.\n')
+fprintf(1, 'Import done.\n')
 
 
 % ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ %
@@ -55,23 +55,34 @@ pv = {predVecs.pvecs(indPredictSpec).preds}';
 % Get predictions.
 rfscores = predictFragSites(Ens, pv);
 
+rfpeaks = struct( ...
+	'pmass_n', num2cell(pmass_n(indPredictSpec)), ...
+	'mass',    {nodes(scan2node(indPredictSpec)).fwd}', ...
+	'score',   rfscores ...
+	);
 
 
-% HMM de novo sequencing...
-% 
-% 
-% 
+% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ %
+% HMM de novo sequencing.
+
+fprintf(1, 'De novo sequencing ...\n')
+
+denovoSeqs = hmmDeNovo(rfpeaks, TransMat, Meta.params.denovo);
+
+fprintf(1, 'Sequencing done.\n')
 
 
+% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ %
+% @TODO organize results, calculate some derived results fields, print to file.
 
-varargout = {};
+
+varargout = {denovoSeqs};
 
 end
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% Subfunctions
-
 
 function rfscores = predictFragSites(Ens, pv)
 	% Apply RF for fragmentation site predictions.

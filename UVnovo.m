@@ -49,8 +49,8 @@ switch exec_mode
 		varargout{1} = Meta;
 		
 	case 'denovo'
-		Meta = denovo(args);
-		varargout{1} = Meta;
+		[Meta, denovoSeqs] = denovo(args);
+		varargout = {Meta, denovoSeqs};
 		
 	case 'benchmark'
 		benchmark(args)
@@ -144,25 +144,17 @@ function varargout = train(argsIn)
 	% Get UVnovo parameters & update with user-provided params.
 	Meta.params = getParams(Meta.paths.params.path);
 	
-% 	% Update 'Meta' with experiment name & working/output directory.
-% 	t_expname = []; % @TODO populate with something.
-% 	if ~isempty(args.savedir)
-% 		t_expdir = args.savedir;
-% 	else
-% 		t_expdir = fileparts(Meta.paths.train.path);
-% 	end
-% 	Meta = initExperiment(Meta, t_expname, t_expdir);
-	
-	% Open matlabpool if using parallel computation & it's not already open.
-	% A just-opened pool closes when 'closepool_onCleanup' is destroyed, i.e.
-	% when this function returns or there's an error somewhere.
-	closepool_onCleanup = openParallel(Meta); %#ok<NASGU>
-	
-	% Build models from training data.
-	fprintf(1, 'Training UVnovo models ... \n')
-	
 	if ~isfield(args,'dryrun') || ~args.dryrun
+		% Open matlabpool if using parallel computation & it's not already open.
+		% A just-opened pool closes when 'closepool_onCleanup' is destroyed --
+		% i.e. when this function returns or there's an error somewhere.
+		closepool_onCleanup = openParallel(Meta); %#ok<NASGU>
+		
+		% Build models from training data.
+		fprintf(1, 'Training UVnovo models ... \n')
 		UVnovo_train(Meta)
+	else
+		% pass
 	end
 	
 	varargout = {Meta};
@@ -207,27 +199,19 @@ function varargout = denovo(argsIn)
 	% Get UVnovo parameters & update with user-provided params.
 	Meta.params = getParams(Meta.paths.params.path);
 	
-% 	% Update 'Meta' with experiment name & working/output directory.
-% 	t_expname = []; % @TODO populate with something.
-% 	if ~isempty(args.savedir)
-% 		t_expdir = args.savedir;
-% 	else
-% 		t_expdir = fileparts(Meta.paths.test.path);
-% 	end
-% 	Meta = initExperiment(Meta, t_expname, t_expdir);
-	
-	% Open matlabpool if using parallel computation & it's not already open.
-	closepool_onCleanup = openParallel(Meta); %#ok<NASGU>
-	
-	% De novo sequencing!
-	fprintf(1, 'De novo sequencing ... \n')
-	
 	if ~isfield(args,'dryrun') || ~args.dryrun
-		UVnovo_denovo(Meta)
+		% Open matlabpool if using parallel computation & it's not already open.
+		closepool_onCleanup = openParallel(Meta); %#ok<NASGU>
+		
+		% De novo sequencing!
+		denovoSeqs = UVnovo_denovo(Meta);
+		
+		varargout = {Meta, denovoSeqs};
+	else
+		varargout = {Meta, []};
 	end
 	
-	varargout = {Meta};
-	fprintf(1,'Done.\n')
+	fprintf(1,'All done.\n')
 end
 
 

@@ -17,7 +17,6 @@ params.UVnovo.matlabpool_varargs = {4};
 % Amino acids
 % @TODO I'm not happy with how this works. Make it better.
 params.AAs = struct(  ...
-	... 'excludeAAs', '', ...  % Disallowed amino acids. -> Now inferred from aa counts file.
 	'ncderiv', [0, 0], ... % N/C-terminal derivatization fixed mass
 	'ptms', ... % PTMs: <2 x n> cell of { symbol<char>, mass<real>; ... }
 		{{
@@ -88,6 +87,32 @@ params.predVecs.featuresMassWin = [-50 50];
 % training examples. If left empty, UVnovo assigns a random seed, and the
 % training procedure will yield slightly different results each time it is run.
 params.predVecs.falseObs.rstreamSeed = 121212;
+
+
+%% HMM de novo sequence predictions.
+%  These should probably be left alone.
+% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ %
+
+% UVnovo de novo parameters
+
+% RF probability regularization factor.
+% 	The RF can return probabilities of 0 or 1. This is not realistic.
+%	Adjusted RF probablilities are given as: ((prob - .5)*probRegularize + .5)
+params.denovo.probRegularize = .999;
+
+% Each path length for a spectrum is quickly scored.
+% A low score means bad spectra or sequence reconstruction.
+% Skip spectra with a low score to save time. -5 is a fine lower threshold.
+params.denovo.minQuickScore_to_proceed = -5;
+% UVnovo only composes sequence predictions for lengths with scores above this
+% cutoff, normalized by the top-scoring sequence length.
+params.denovo.fastFragThresh = .92;
+
+% Amino acid transition matrix weight [0 <= weight <= 1].
+params.denovo.tm_weight = .5;
+
+% Record HMM peak scores >= threshold. Large memory footprint if none discarded.
+params.denovo.peakScoreRecordThresh = 1e-4;
 
 
 
