@@ -3,3 +3,4 @@ TEMP/
 IGNORE/
 DEPRECATE/
 *.asv
+*.log

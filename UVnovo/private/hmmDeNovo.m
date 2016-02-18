@@ -1,4 +1,4 @@
-function denovoData = hmmDeNovo(rfpeaks, TM, paramsIn)
+function [denovoData, params] = hmmDeNovo(rfpeaks, TM, paramsIn)
 % HMMDENOVO ...
 %	...
 % 
@@ -21,34 +21,42 @@ paramsDef = struct( ...
 	'probRegularize', .999,... RF probability moderation [0.9 < x < 1].
 	'fastFragThresh', .92, ... Quickscore cutoff for sequencing [0 <= x <= 1].
 	'tm_weight', .5, ...       AA transition matrix weight [0 <= x <= 1].
-	'peakScoreRecordThresh', 1e-4, ... Remove HMM peaks below x.
-	'minQuickScore_to_proceed', -5 ... Skip spectra with low quick scores.
+	'peakScoreRecordThresh', 1e-4, ... Remove HMM peaks below x. [0 <= x <= 1]. x > 1: discard all.
+	'minQuickScore_to_proceed', -5,... Skip spectra with low quick scores.
+	'nodePolarizationVals', ... For each sequence length, count number of HMM nodes scored above these values.
+		sort(reshape(bsxfun(@times, [1 2 5]', 10.^(-6:-1)), [], 1), 'descend') ...
 	);
 if ~exist('paramsIn','var'), paramsIn = []; end
 params = initParams(paramsDef, paramsIn);
 
 
-% @TODO get rid of the following fp (fragment prediction) templates.
+if params.peakScoreRecordThresh >= 0 && params.peakScoreRecordThresh <= 1
+	retainPeakScores = true;
+else
+	retainPeakScores = false;
+end
+
+% Templates for de novo results structs.
 t ={
-	[],                'predSeq';
-	[],                'peakScores';
-	[],                'nodeMasses';
-	[],                'nodeScores';
-	0,                 'avgNodeScore';
-	0,                 'minNodeScore';
-% 	[],                'r_nodeScores';
-% 	0,                 'r_avgNodeScore';
-% 	0,                 'r_minNodeScore';
+	[],         'predSeq';
+	[],         'peakScores';
+	[],         'nodeMasses';
+	[],         'nodeScores';
+	0,          'avgNodeScore';
+	0,          'minNodeScore';
+	[],         'r_nodeScores';
+	0,          'r_avgNodeScore';
+	0,          'r_minNodeScore';
+	[],         'polarization';
 	};
 fpTemplate = cell2struct( t(:,1), t(:,2), 1);
 t ={
-	[],                'peakScores';
-	[],                'nodeScores';
-	0,                 'avgNodeScore';
-	0,                 'avgNodeScore_normalized';
+	[],         'nodeScores';
+	0,          'avgNodeScore';
+	0,          'avgNodeScore_normalized';
 	};
 fpQuickTemplate = cell2struct( t(:,1), t(:,2), 1);
-
+ 
 
 % Initialize output data struct.
 % @TODO Rename fields. Remove unneeded fields.
@@ -59,9 +67,15 @@ denovoData = repmat( struct( ...
 		'quickscore',struct  ...
 	), size(rfpeaks) );
 
-for m = 1:numel(rfpeaks)
+
+nodePolarizationVals = params.nodePolarizationVals;
+nnpv = numel(nodePolarizationVals);
+
+ntotal = numel(rfpeaks);
+
+for m = 1:ntotal
 	pmass_n = rfpeaks(m).pmass_n;
-	probSpec = [rfpeaks(m).mass, (rfpeaks(m).score - 0.5)*params.probRegularize + .5];
+	probSpec = [rfpeaks(m).mass, (rfpeaks(m).score - 0.5)*params.probRegularize + .5]; %#ok<PFBNS>
 	specForHMM = [probSpec(:,1), probSpec(:,2)./(1-probSpec(:,2))];
 	
 	[alpha, beta_mc] = hmm(specForHMM, TM, pmass_n, params.tm_weight);
@@ -72,16 +86,17 @@ for m = 1:numel(rfpeaks)
 	% @TODO calculate this once for each pep mass.
 	% Lower length bound:
 	nfInit = ceil( (pmass_n - sum(TM.ncderiv) - 1) / max(TM.masses));
-	while ~any( ismember(alpha(1).s(:,1), beta_mc(nfInit-1).s(:,1)) )
+	while ~any( ismember(alpha(1).s(:,1), beta_mc(nfInit - 1).s(:,1) ))
 		nfInit = nfInit+1;
 	end
 	% Higher length bound:
 	nfFinal = numel(beta_mc);
-	while ~any(ismember(alpha(1).s(:,1), beta_mc(nfFinal-1).s(:,1)))
+	while ~any( ismember(alpha(1).s(:,1), beta_mc(nfFinal - 1).s(:,1) ))
 		nfFinal = nfFinal-1;
 	end
 	
-	% %% Quick-score.
+	
+	% Quick-score.
 	
 	fpQuick = repmat(fpQuickTemplate, nfFinal, 1);
 	% Estimate the most likely sequence lengths.
@@ -101,9 +116,9 @@ for m = 1:numel(rfpeaks)
 			total(state_a(:,1)) = max(total(state_a(:,1)), state_prob);
 			state_peaks(i) = state_a(imaxLO,1);
 		end
-		t = total;
-		t( isnan(t) | (t < params.peakScoreRecordThresh) ) = 0;
-		fpQuick(n_frags).peakScores  = sparse(t);
+		% 		t = total;
+		% 		t( isnan(t) | (t < params.peakScoreRecordThresh) ) = 0;
+		% 		fpQuick(n_frags).peakScores  = sparse(t);
 		fpQuick(n_frags).nodeScores  = total(state_peaks);
 		fpQuick(n_frags).avgNodeScore  = mean(total(state_peaks));
 	end
@@ -116,14 +131,13 @@ for m = 1:numel(rfpeaks)
 	
 	denovoData(m).quickscore = fpQuick;
 	
+	msgBuffer = sprintf('%-6d Spectrum quickscore: %f', m, quickScore);
 	if quickScore < params.minQuickScore_to_proceed
-		fprintf(1,'spectrum quickscore: %f.  Score below threshold for sequencing.\n%d spectra completed.\n',...
-			quickScore, m);
+		fprintf(1,'%s -- Score below threshold for sequencing.\n', msgBuffer)
 		continue
-	else
-		msgBuffer = sprintf('spectrum quickscore: %f\n%d spectra completed.\n',...
-			quickScore, m);
 	end
+	
+	% Recalculate HMM and find best sequence (path) through HMM nodes.
 	
 	% Peak 'likelihoods' are transformed differently than for the quick score above.
 	% @TODO Extract this magic number & figure out a good way to optimize it.
@@ -137,7 +151,8 @@ for m = 1:numel(rfpeaks)
 	ntops = numel(tops);
 	indsAlphaInBeta = cell(ntops, tops(ntops)-1);
 	indsBetaInAlpha = cell(ntops, tops(ntops)-1);
-	for n = 1:ntops % @TODO Repetitive code could be optimized. Profile first.
+	for n = 1:ntops
+		% @TODO Code could be optimized. Profile to see if it's a problem.
 		n_frags = tops(n);
 		for i = 1:n_frags-1
 			[indsAlphaInBeta{n,i}, locb] = ...
@@ -153,7 +168,7 @@ for m = 1:numel(rfpeaks)
 		total_eachstate = zeros(pmass_n,n_frags-1);
 		smass = cell(1,n_frags-1);
 		for i = 1:n_frags-1
-			%	alpha_i where overlaps beta
+			% alpha_i where overlaps beta
 			state_a = alpha(i).s(indsAlphaInBeta{n,i},:);
 			state_b = beta_mc(n_frags-i).s(indsBetaInAlpha{n,i},:);
 			
@@ -172,38 +187,37 @@ for m = 1:numel(rfpeaks)
 		fp(n_frags).nodeMasses = predFrags(1:end-1);
 		fp(n_frags).avgNodeScore = mean(predNodeScores);
 		fp(n_frags).minNodeScore = min(predNodeScores);
-
-		% Retaining peak scores is needed to rescoring. @TODO move the
-		%	rescoring function here & make optional to retain peak scores.
+		
+		% Rescoring.
+		% Nodes that share a mass position with a node on the best path but
+		% have a different sequence position are removed. Best-path node scores
+		% are updated to reflect this.
+		nodeReScores = rescorePath(predFrags(1:end-1), total_eachstate);
+		fp(n_frags).r_nodeScores = nodeReScores;
+		fp(n_frags).r_avgNodeScore = mean(nodeReScores);
+		fp(n_frags).r_minNodeScore = min(nodeReScores);
+		
+		% Count of HMM nodes above certain threshold values.
+		% More polarization -> node scores fall off faster. This correlates with
+		% better sequence predictions.
 		t = total_eachstate;
-		t(t < params.peakScoreRecordThresh) = 0;
-		fp(n_frags).peakScores = sparse(t);
-
-		%%% Rescoring
-		% @TODO move rescoring function here. Replace inefficient one below.
-		if m == 1 && n == 1
-			warning('Fill in the sequence rescoring stuff!!!!!')
+		t(predFrags,:) = 0; % ignore mass positions on best path.
+		[~,ia] = sort([nodePolarizationVals; t(t > 0)], 'descend');
+		ib = 1:numel(ia);
+		ib(ia,1) = ib;
+		fp(n_frags).polarization = ib(1:nnpv) - (1:nnpv);
+		
+		if retainPeakScores
+			% HMM node scores. These can be used for diagnostics or
+			% introspection later on.
+			t = total_eachstate;
+			t(t < params.peakScoreRecordThresh) = 0;
+			fp(n_frags).peakScores = sparse(t);
 		end
-		%	Nodes that match any non-current predFrags site are removed for score recalculations.
-		% % % % 			r_total_eachstate = zeros(pmass_n,n_frags-1);
-		% % % % 			r_predNodeScores = zeros(n_frags-1,1);
-		% % % % 			for i = 1:n_frags-1
-		% % % % 				state_a = alpha(i).s(indsAlphaInBeta{n,i},:);
-		% % % % 				state_b = beta_mc(n_frags-i).s(indsBetaInAlpha{n,i},:);
-		% % % % 				oknodes = ~ismember(state_a(:,1), predFrags([1:i-1, i+1:end]));
-		% % % %
-		% % % % 				lo_sum = state_a(oknodes,2)+state_b(oknodes,2);
-		% % % % 				t = exp(lo_sum-max(lo_sum));
-		% % % % 				stateScores = t/sum(t);
-		% % % % 				r_total_eachstate(state_a(oknodes,1),i) = stateScores;
-		% % % % 				r_predNodeScores(i) = r_total_eachstate(predFrags(i),i);
-		% % % % 			end
-		% % % % 			fp(n_frags).r_nodeScores = r_predNodeScores;
-		% % % % 			fp(n_frags).r_avgNodeScore = mean(r_predNodeScores);
-		% % % % 			fp(n_frags).r_minNodeScore = min(r_predNodeScores);
+		
 	end
 	
-	% Get top-scoring sequecne prediction.
+	% Get top-scoring sequence prediction.
 	n_frags = find([fp.avgNodeScore] == max([fp.avgNodeScore]), 1, 'last');
 	predSeq = fp(n_frags).predSeq;
 	
@@ -216,6 +230,28 @@ for m = 1:numel(rfpeaks)
 	denovoData(m).fragPreds = fp;
 	denovoData(m).topSeq = predSeq;
 	
-	fprintf(1,'%s', msgBuffer)
+	fprintf(1,'%s\n', msgBuffer)
+end
+
+end
+
+
+%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% Subfunctions
+
+
+function pathReScores = rescorePath(pathMasses, peakScores)
+	% Nodes may have a score at more than one position along the sequence.
+	% This rescoring removes the score component of out-of-position sequence
+	%	nodes for each in-position sequence node.
+	
+	indPathNodes = sub2ind(size(peakScores), pathMasses', 1:numel(pathMasses));
+	pathScores = peakScores(indPathNodes);
+
+	% score of nodes that are on path at a different position
+	t = sum(peakScores(pathMasses,:), 1) - pathScores;
+
+	% remove score influence of the out-of-position nodes
+	pathReScores = full(pathScores./(1-t))';
 end
 

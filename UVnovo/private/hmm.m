@@ -55,7 +55,6 @@ while sum(statej(:,2)) < BIGI
 	normCounter(j) = normCounter(j)+1;
 end
 
-% @TODO precompute some of this.
 mass_onpath = state_masses(transMat, pmass_n);
 
 t = find(mass_onpath,1,'last');
